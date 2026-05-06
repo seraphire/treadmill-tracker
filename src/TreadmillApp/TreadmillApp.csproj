@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>TreadmillApp</AssemblyName>
+    <RootNamespace>TreadmillApp</RootNamespace>
+    <ApplicationIcon>images\connected.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <!-- Tray icons — copied to output so TrayIconService loads them at runtime.
+       Animation frames: animate1.ico, animate2.ico, animate3.ico (stopwatch sweep). -->
+  <ItemGroup>
+    <Content Include="images\connected.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="images\disconnected.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="images\animate1.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="images\animate2.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="images\animate3.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!-- Toast notification background image (embedded as WPF resource) -->
+  <ItemGroup>
+    <Resource Include="images\running.png" />
+    <Resource Include="images\finished.png" />
+    <Resource Include="images\sleeping.png" />
+    <Resource Include="images\winning.png" />
+    <Resource Include="images\ghosted.png" />
+    <Resource Include="images\lost connection.png" />
+    <Resource Include="images\config.png" />
+    <Resource Include="images\uploaded.png" />
+    <Resource Include="images\firstrun.png" />
+    <Resource Include="images\thumbsup.png" />
+    <Resource Include="images\goals.png" />
+  </ItemGroup>
+
+</Project>

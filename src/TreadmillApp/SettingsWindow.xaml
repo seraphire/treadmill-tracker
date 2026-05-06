@@ -1,0 +1,320 @@
+<Window x:Class="TreadmillApp.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Settings"
+        Width="640" Height="480"
+        MinWidth="520" MinHeight="380"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TabControl Grid.Row="0">
+
+            <!-- Device tab -->
+            <TabItem Header="Device">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Last device hint -->
+                    <Border Grid.Row="0" Background="#F4F4F4" BorderBrush="#DDDDDD"
+                            BorderThickness="1" CornerRadius="4" Padding="10,7"
+                            Margin="0,0,0,10">
+                        <TextBlock x:Name="LastDeviceLabel" Foreground="#444444"/>
+                    </Border>
+
+                    <!-- Scan controls -->
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button x:Name="ScanButton"     Content="Scan"      MinWidth="90"
+                                Margin="0,0,8,0" Click="Scan_Click"/>
+                        <Button x:Name="StopScanButton" Content="Stop Scan" MinWidth="90"
+                                IsEnabled="False" Click="StopScan_Click"/>
+                    </StackPanel>
+
+                    <!-- Device list -->
+                    <ListView Grid.Row="2" x:Name="DeviceList"
+                              SelectionChanged="DeviceList_SelectionChanged">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="Name" Width="260"
+                                                DisplayMemberBinding="{Binding Name}"/>
+                                <GridViewColumn Header="Type" Width="160"
+                                                DisplayMemberBinding="{Binding DeviceType}"/>
+                                <GridViewColumn Header="dBm"  Width="50"
+                                                DisplayMemberBinding="{Binding SignalStrength}"/>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+
+                    <!-- Connect / Forget -->
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button x:Name="ForgetButton" Content="Forget Saved Device"
+                                MinWidth="160" Margin="0,0,8,0"
+                                IsEnabled="False" Click="Forget_Click"/>
+                        <Button x:Name="ConnectButton" Content="Connect"
+                                MinWidth="100" HorizontalAlignment="Right"
+                                IsEnabled="False" Click="Connect_Click"/>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- Workout tab -->
+            <TabItem Header="Workout">
+                <Grid Margin="20">
+                    <StackPanel VerticalAlignment="Top">
+                        <TextBlock Text="Session Behavior" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"/>
+
+                        <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="4"
+                                Padding="14,10" Background="#FAFAFA">
+                            <StackPanel>
+                                <TextBlock Text="Pause Tolerance" FontWeight="SemiBold"/>
+                                <TextBlock Foreground="#777" FontSize="11" TextWrapping="Wrap"
+                                           Margin="0,4,0,10"
+                                           Text="If you step off the treadmill briefly (water, bathroom), how long should the app wait before treating it as the end of the walk? Resuming inside this window keeps it as one session — distance, steps, and calories all carry over and post to Strava as a single activity."/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Slider Grid.Column="0" x:Name="PauseToleranceSlider"
+                                            Minimum="10" Maximum="600"
+                                            SmallChange="10" LargeChange="60"
+                                            TickFrequency="60" TickPlacement="BottomRight"
+                                            ValueChanged="PauseToleranceSlider_ValueChanged"/>
+                                    <TextBlock Grid.Column="1" x:Name="PauseToleranceLabel"
+                                               Margin="14,0,0,0" MinWidth="64"
+                                               VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="4"
+                                Padding="14,10" Background="#FAFAFA" Margin="0,12,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Walk · Jog · Run" FontWeight="SemiBold"/>
+                                <TextBlock Foreground="#777" FontSize="11" TextWrapping="Wrap"
+                                           Margin="0,4,0,10"
+                                           Text="Average-speed cutoffs that classify each session. The toast title and Strava activity name reflect the result. Strava sport_type is Walk for walks; Run for jogs and runs."/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="160"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="6"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Jog at or above:"
+                                               VerticalAlignment="Center"/>
+                                    <TextBox Grid.Row="0" Grid.Column="1" x:Name="JogThresholdBox"
+                                             Padding="4,3" LostFocus="JogThresholdBox_LostFocus"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="2" Text=" km/h"
+                                               VerticalAlignment="Center" Margin="6,0,0,0"
+                                               Foreground="#666"/>
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Run at or above:"
+                                               VerticalAlignment="Center"/>
+                                    <TextBox Grid.Row="2" Grid.Column="1" x:Name="RunThresholdBox"
+                                             Padding="4,3" LostFocus="RunThresholdBox_LostFocus"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="2" Text=" km/h"
+                                               VerticalAlignment="Center" Margin="6,0,0,0"
+                                               Foreground="#666"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="4"
+                                Padding="14,10" Background="#FAFAFA" Margin="0,12,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Minimum Walk Thresholds" FontWeight="SemiBold"/>
+                                <TextBlock Foreground="#777" FontSize="11" TextWrapping="Wrap"
+                                           Margin="0,4,0,10"
+                                           Text="Walks below either threshold are discarded — not saved locally and not pushed to Strava. Filters out treadmill-spin-up false starts. Set to 0 to disable a filter."/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="160"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="6"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Minimum steps:"
+                                               VerticalAlignment="Center"/>
+                                    <TextBox Grid.Row="0" Grid.Column="1" x:Name="MinStepsBox"
+                                             Padding="4,3" LostFocus="MinStepsBox_LostFocus"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="2" Text=" steps"
+                                               VerticalAlignment="Center" Margin="6,0,0,0"
+                                               Foreground="#666"/>
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Minimum duration:"
+                                               VerticalAlignment="Center"/>
+                                    <TextBox Grid.Row="2" Grid.Column="1" x:Name="MinSecondsBox"
+                                             Padding="4,3" LostFocus="MinSecondsBox_LostFocus"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="2" Text=" sec"
+                                               VerticalAlignment="Center" Margin="6,0,0,0"
+                                               Foreground="#666"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- Goals tab -->
+            <TabItem Header="Goals">
+                <Grid Margin="20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Image Grid.Column="0"
+                           Source="pack://application:,,,/images/goals.png"
+                           Width="100" Height="100"
+                           VerticalAlignment="Top" HorizontalAlignment="Center"
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Top" Margin="10,0,0,0">
+                        <TextBlock Text="Daily Goals" FontSize="14" FontWeight="SemiBold"
+                                   Margin="0,0,0,8"/>
+                        <TextBlock Foreground="#666" TextWrapping="Wrap"
+                                   Text="Set daily targets for distance and steps. We'll show your progress in the totals bar and pop a celebration toast the first time you cross either goal each day. Leave a field blank to disable that goal."/>
+
+                        <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="4"
+                                Padding="14,12" Margin="0,14,0,0" Background="#FAFAFA">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="8"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Daily distance:"
+                                           VerticalAlignment="Center"/>
+                                <TextBox Grid.Row="0" Grid.Column="1"
+                                         x:Name="DailyDistanceBox"
+                                         Padding="4,3"
+                                         LostFocus="DailyDistanceBox_LostFocus"/>
+                                <TextBlock Grid.Row="0" Grid.Column="2" Text=" km"
+                                           VerticalAlignment="Center" Margin="6,0,0,0"
+                                           Foreground="#666"/>
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Daily steps:"
+                                           VerticalAlignment="Center"/>
+                                <TextBox Grid.Row="2" Grid.Column="1"
+                                         x:Name="DailyStepsBox"
+                                         Padding="4,3"
+                                         LostFocus="DailyStepsBox_LostFocus"/>
+                                <TextBlock Grid.Row="2" Grid.Column="2" Text=" steps"
+                                           VerticalAlignment="Center" Margin="6,0,0,0"
+                                           Foreground="#666"/>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- Strava tab -->
+            <TabItem Header="Strava">
+                <Grid Margin="20">
+                    <StackPanel VerticalAlignment="Top">
+                        <TextBlock Text="Strava Integration" FontSize="14"
+                                   FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock Foreground="#666666" TextWrapping="Wrap"
+                                   Text="Authorize Treadmill Tracker to push completed walks to Strava as Walk activities. The Conqueror picks them up automatically from your Strava feed."/>
+
+                        <!-- Credentials -->
+                        <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="4"
+                                Padding="14,10" Margin="0,14,0,0" Background="#FAFAFA">
+                            <StackPanel>
+                                <TextBlock Text="API Application Credentials"
+                                           FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                <TextBlock Foreground="#777777" FontSize="11" TextWrapping="Wrap"
+                                           Margin="0,0,0,8"
+                                           Text="From strava.com/settings/api. Stored encrypted via Windows Credential Manager."/>
+
+                                <Grid Margin="0,2,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="6"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Client ID:"
+                                               VerticalAlignment="Center"/>
+                                    <TextBox Grid.Row="0" Grid.Column="1" x:Name="ClientIdBox"
+                                             Padding="4,3"/>
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Client Secret:"
+                                               VerticalAlignment="Center"/>
+                                    <PasswordBox Grid.Row="2" Grid.Column="1" x:Name="ClientSecretBox"
+                                                 Padding="4,3"/>
+                                </Grid>
+
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                            Margin="0,10,0,0">
+                                    <Button x:Name="ForgetCredentialsButton"
+                                            Content="Forget Credentials" MinWidth="140"
+                                            Margin="0,0,8,0" IsEnabled="False"
+                                            Click="ForgetCredentials_Click"/>
+                                    <Button x:Name="SaveCredentialsButton"
+                                            Content="Save Credentials" MinWidth="140"
+                                            Click="SaveCredentials_Click"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Connection status -->
+                        <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="4"
+                                Padding="14,10" Margin="0,12,0,0" Background="#FAFAFA">
+                            <StackPanel>
+                                <TextBlock Text="Connection" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                <TextBlock x:Name="StravaStatusText" Foreground="#666666"
+                                           Text="Not connected." Margin="0,0,0,10"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button x:Name="ConnectStravaButton"
+                                            Content="Connect to Strava..." MinWidth="180"
+                                            Margin="0,0,8,0" IsEnabled="False"
+                                            Click="ConnectStrava_Click"/>
+                                    <Button x:Name="DisconnectStravaButton"
+                                            Content="Disconnect" MinWidth="100"
+                                            IsEnabled="False" Click="DisconnectStrava_Click"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+        </TabControl>
+
+        <Button Grid.Row="1" Content="Close" HorizontalAlignment="Right"
+                MinWidth="90" Padding="14,6" Margin="0,12,0,0"
+                IsCancel="True" Click="Close_Click"/>
+    </Grid>
+</Window>

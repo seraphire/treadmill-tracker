@@ -1,0 +1,110 @@
+# =============================================================================
+# .NET / C# build output
+# =============================================================================
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Bb]uild/
+artifacts/
+publish/
+*.binlog
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+*.rsuser
+*.userprefs
+packages/
+project.lock.json
+project.fragment.lock.json
+
+# =============================================================================
+# Visual Studio / Rider / VS Code workspace state
+# =============================================================================
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Compilation byproducts
+*_i.c
+*_p.c
+*_h.h
+*.ilk
+*.meta
+*.obj
+*.iobj
+*.pch
+*.pdb
+*.ipdb
+*.pgc
+*.pgd
+*.rsp
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp
+*.tmp_proj
+*_wpftmp.csproj
+*.log
+*.tlog
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+*.scc
+
+# =============================================================================
+# Code coverage
+# =============================================================================
+coverage/
+*.coverage
+*.coveragexml
+TestResult.xml
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# =============================================================================
+# OS / editor cruft
+# =============================================================================
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# =============================================================================
+# Secrets / local-only files
+# =============================================================================
+.env
+.env.local
+.env.*.local
+
+# =============================================================================
+# Project-specific safety nets
+# Local user data lives under %LocalAppData%/TreadmillApp/ — these patterns
+# guard against ever accidentally checking in personal walk data, OAuth
+# tokens, or BLE protocol captures from the working tree.
+# =============================================================================
+sessions.json
+flags.json
+settings.json
+strava.json
+treadmill-capture-*.txt
