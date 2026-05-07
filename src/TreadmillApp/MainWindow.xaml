@@ -141,7 +141,7 @@
                 <StackPanel Grid.Column="8" Margin="0,0,0,4">
                     <TextBlock Text="ELAPSED" Style="{StaticResource MetricLabel}"/>
                     <TextBlock x:Name="ElapsedValue" Text="--" Style="{StaticResource MetricValue}"/>
-                    <TextBlock Text="mm:ss" Style="{StaticResource MetricUnit}"/>
+                    <TextBlock Text="time" Style="{StaticResource MetricUnit}"/>
                 </StackPanel>
             </Grid>
         </Border>

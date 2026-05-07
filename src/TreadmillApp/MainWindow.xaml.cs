@@ -130,7 +130,7 @@ public partial class MainWindow : Window
                 CheckGoalHit();
                 _appData.AppendSession(session);
                 AppendLog($"Walk complete — {session.DistanceMeters} m · {session.Steps} steps · " +
-                          $"{session.Calories} kcal · {session.Duration:mm\\:ss}");
+                          $"{session.Calories} kcal · {FormatDuration(session.Duration)}");
 
                 _tray?.SetConnectedIdle(_connectedDeviceName);
 
@@ -154,7 +154,7 @@ public partial class MainWindow : Window
                     ShowToast(
                         isFirstToday ? "Way to start!" : $"{verbCapitalized} Complete!",
                         $"{session.DistanceMeters} m  ·  {session.Steps} steps  ·  " +
-                        $"{session.Calories} kcal  ·  {session.Duration:mm\\:ss}",
+                        $"{session.Calories} kcal  ·  {FormatDuration(session.Duration)}",
                         displayMs: 7000,
                         style: isFirstToday ? ToastStyle.FirstRun : ToastStyle.Finish);
                 }
@@ -565,7 +565,7 @@ public partial class MainWindow : Window
         StepsValue.Text    = metrics.StepCount.HasValue      ? $"{metrics.StepCount.Value}"        : "--";
         CaloriesValue.Text = metrics.ExpendedEnergy.HasValue ? $"{metrics.ExpendedEnergy.Value}"   : "--";
         ElapsedValue.Text  = metrics.ElapsedSeconds.HasValue
-            ? TimeSpan.FromSeconds(metrics.ElapsedSeconds.Value).ToString(@"mm\:ss")
+            ? FormatDuration(TimeSpan.FromSeconds(metrics.ElapsedSeconds.Value))
             : "--";
         StepsLabel.Text    = "STEPS";
     }
@@ -668,6 +668,18 @@ public partial class MainWindow : Window
     }
 
     // =========================================================================
+    // Helpers
+    // =========================================================================
+
+    /// <summary>
+    /// Formats a duration as "mm:ss" while it's under an hour, "h:mm:ss"
+    /// once it crosses the hour mark — so a 1h 02m 15s walk shows as
+    /// "1:02:15" instead of getting truncated to "02:15".
+    /// </summary>
+    private static string FormatDuration(TimeSpan d) =>
+        d.TotalHours >= 1 ? d.ToString(@"h\:mm\:ss") : d.ToString(@"mm\:ss");
+
+    // =========================================================================
     // Session view model
     // =========================================================================
 
@@ -677,7 +689,7 @@ public partial class MainWindow : Window
         public SessionViewModel(TreadmillSession s) => _s = s;
 
         public string StartDisplay    => _s.StartTime.ToString("HH:mm");
-        public string DurationDisplay => _s.Duration.ToString(@"mm\:ss");
+        public string DurationDisplay => FormatDuration(_s.Duration);
         public string AvgSpeedDisplay => _s.AverageSpeedKmh > 0 ? $"{_s.AverageSpeedKmh:F1}" : "--";
         public string StepsDisplay    => _s.Steps > 0 ? _s.Steps.ToString() : "--";
         public string DistanceDisplay => _s.DistanceMeters > 0 ? $"{_s.DistanceMeters} m" : "--";
