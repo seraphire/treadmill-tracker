@@ -24,7 +24,10 @@ public sealed class StravaService : IDisposable
     private const string Scope             = "activity:write";
 
     private readonly StravaSecureStorage _storage = new();
-    private readonly HttpClient          _http    = new() { Timeout = TimeSpan.FromSeconds(30) };
+    // Strava's /activities endpoint can be slow under load (anywhere up to a
+    // minute). 90s comfortably covers the slow tail without making a stuck
+    // request feel frozen forever.
+    private readonly HttpClient          _http    = new() { Timeout = TimeSpan.FromSeconds(90) };
 
     public event EventHandler<string>? Log;
 

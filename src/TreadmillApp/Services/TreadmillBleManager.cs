@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Win32;
 using TreadmillApp.Models;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Advertisement;
@@ -34,6 +36,7 @@ public class TreadmillBleManager : IDisposable
     private CancellationTokenSource?      _pollCts;
     private List<GattCharacteristic>      _vendorNotifyChars = new();
     private DateTime                      _lastVendorDataTime = DateTime.MinValue;
+    private DateTime                      _lastResubscribeTime = DateTime.MinValue;
 
     // ── Session tracking ──────────────────────────────────────────────────────
     // Sessions can span multiple "segments" of walking separated by pauses
@@ -71,6 +74,15 @@ public class TreadmillBleManager : IDisposable
     public event EventHandler<TreadmillSession>?   SessionPaused;
     public event EventHandler<TreadmillSession>?   SessionResumed;
     public event EventHandler?                     ConnectionLost;
+    public event EventHandler?                     SystemResumed;
+
+    /// <summary>
+    /// True between PowerModes.Suspend and PowerModes.Resume. While set, the
+    /// BLE manager suppresses ConnectionLost / auto-reconnect because Windows
+    /// is tearing down the connection on purpose; the MainWindow handles the
+    /// reconnect on wake via the SystemResumed event with longer retry windows.
+    /// </summary>
+    public bool IsSystemSleeping { get; private set; }
 
     public ConnectionState State              { get; private set; } = ConnectionState.Disconnected;
     public BleDevice?      LastConnectedDevice => _lastConnectedDevice;
@@ -300,7 +312,11 @@ public class TreadmillBleManager : IDisposable
             _pollCts?.Cancel();
             _pollCts = null;
 
-            bool unexpected = !_userDisconnecting;
+            // System-suspend-induced disconnects are not "unexpected" — the
+            // OS is tearing down BLE on purpose. Skip the LostConnection toast
+            // and the auto-reconnect; MainWindow will handle reconnect on
+            // wake via the SystemResumed event.
+            bool unexpected = !_userDisconnecting && !IsSystemSleeping;
             if (unexpected)
                 FinalizeActiveSession();
 
@@ -455,6 +471,12 @@ public class TreadmillBleManager : IDisposable
 
     private void ParseVendorPacket(byte[] data)
     {
+        // Any packet — even the short idle "heartbeat" packets the treadmill
+        // streams while stationary — proves the BLE link is alive. Mark this
+        // before the format filters so the watchdog doesn't think vendor data
+        // has gone silent just because the user isn't walking.
+        _lastVendorDataTime = DateTime.Now;
+
         // Only handle the 17-byte active data packet (status 0x03 or 0x04)
         if (data.Length != 17) return;
         if (data[0] != 0x02 || data[1] != 0x51 || data[16] != 0x03) return;
@@ -659,12 +681,18 @@ public class TreadmillBleManager : IDisposable
                 catch { }
             }
 
-            // Re-subscribe notify chars if they've gone silent for >20 s
+            // Re-subscribe notify chars only when we'd actually benefit from
+            // recovering vendor data — i.e. during an active walk. Throttle
+            // to once per minute so we don't hammer the BLE stack even if
+            // re-subscription doesn't restore notifications.
             if (tick % 5 == 0 &&
+                _currentSession != null &&
                 _vendorNotifyChars.Count > 0 &&
                 _lastVendorDataTime != DateTime.MinValue &&
-                DateTime.Now - _lastVendorDataTime > TimeSpan.FromSeconds(20))
+                DateTime.Now - _lastVendorDataTime  > TimeSpan.FromSeconds(20) &&
+                DateTime.Now - _lastResubscribeTime > TimeSpan.FromSeconds(60))
             {
+                _lastResubscribeTime = DateTime.Now;
                 Log("Vendor notifications silent — re-subscribing...");
                 foreach (var ch in _vendorNotifyChars)
                 {
@@ -698,7 +726,52 @@ public class TreadmillBleManager : IDisposable
 
     public void Dispose()
     {
+        SystemEvents.PowerModeChanged -= OnPowerModeChanged;
         StopScanning();
         _device?.Dispose();
+    }
+
+    public TreadmillBleManager()
+    {
+        SystemEvents.PowerModeChanged += OnPowerModeChanged;
+    }
+
+    // =========================================================================
+    // Power events — sleep / hibernate / wake
+    // =========================================================================
+
+    private void OnPowerModeChanged(object? sender, PowerModeChangedEventArgs e)
+    {
+        switch (e.Mode)
+        {
+            case PowerModes.Suspend:
+                HandleSuspend();
+                break;
+            case PowerModes.Resume:
+                HandleResume();
+                break;
+        }
+    }
+
+    private void HandleSuspend()
+    {
+        IsSystemSleeping = true;
+        Log("System suspending — saving any active walk and standing by.");
+
+        // Save any walk in progress before Windows tears down the BLE link.
+        // The session is appended to the local store; Strava upload (if it
+        // was about to happen) is deferred — it'll retry on next launch.
+        if (_currentSession != null)
+            FinalizeActiveSession();
+    }
+
+    private void HandleResume()
+    {
+        Log("System resumed.");
+        IsSystemSleeping = false;
+        // MainWindow handles the reconnect UX via this event so it can show
+        // the right toasts and apply a longer retry window than the standard
+        // unexpected-disconnect path (BLE post-wake can take 10–30 sec).
+        SystemResumed?.Invoke(this, EventArgs.Empty);
     }
 }

@@ -98,9 +98,13 @@ public partial class MainWindow : Window
                           style: ToastStyle.LostConnection);
             });
 
+        _ble.SystemResumed += (_, _) =>
+            Dispatcher.Invoke(() => _ = ReconnectAfterWakeAsync());
+
         _ble.SessionCompleted += (_, session) =>
         {
-            bool keep = !ShouldDiscardWalk(session);
+            bool keep         = !ShouldDiscardWalk(session);
+            bool sleepClosing = _ble.IsSystemSleeping;
 
             Dispatcher.Invoke(() =>
             {
@@ -141,16 +145,23 @@ public partial class MainWindow : Window
                     _                    => "Walk",
                 };
 
-                ShowToast(
-                    isFirstToday ? "Way to start!" : $"{verbCapitalized} Complete!",
-                    $"{session.DistanceMeters} m  ·  {session.Steps} steps  ·  " +
-                    $"{session.Calories} kcal  ·  {session.Duration:mm\\:ss}",
-                    displayMs: 7000,
-                    style: isFirstToday ? ToastStyle.FirstRun : ToastStyle.Finish);
+                // Skip the celebratory toast when the system is going to sleep
+                // — the user is walking away from the computer, not finishing
+                // a workout. The walk is still saved locally; Strava upload
+                // will retry on next launch.
+                if (!sleepClosing)
+                {
+                    ShowToast(
+                        isFirstToday ? "Way to start!" : $"{verbCapitalized} Complete!",
+                        $"{session.DistanceMeters} m  ·  {session.Steps} steps  ·  " +
+                        $"{session.Calories} kcal  ·  {session.Duration:mm\\:ss}",
+                        displayMs: 7000,
+                        style: isFirstToday ? ToastStyle.FirstRun : ToastStyle.Finish);
+                }
             });
 
-            // Discarded walks are never uploaded.
-            if (keep)
+            // Discarded walks are never uploaded; sleep-closed walks defer.
+            if (keep && !sleepClosing)
                 _ = HandleStravaForSessionAsync(session);
         };
     }
@@ -261,7 +272,9 @@ public partial class MainWindow : Window
         if (pending.Count == 0) return;
 
         AppendLog($"Retrying {pending.Count} session(s) not yet uploaded to Strava...");
-        int succeeded = 0;
+        int succeeded   = 0;   // newly uploaded this sweep
+        int confirmed   = 0;   // Strava already had it (409) — likely a prior
+                               // attempt timed out on us but actually succeeded
         foreach (var s in pending)
         {
             var type   = _appData.ClassifyWalk(s.AverageSpeedKmh);
@@ -273,8 +286,8 @@ public partial class MainWindow : Window
             }
             else if (result.Permanent)
             {
-                // Duplicate / revoked auth — flag locally and move on.
                 _appData.MarkUploadSkipped(s.StartTime);
+                if (result.Error == "duplicate") confirmed++;
             }
             else
             {
@@ -284,15 +297,24 @@ public partial class MainWindow : Window
             }
         }
 
-        if (succeeded > 0)
+        int total = succeeded + confirmed;
+        if (total > 0)
         {
+            string title = total == 1 ? "Walk Uploaded" : $"{total} Walks Uploaded";
+            string msg;
+            if (succeeded > 0 && confirmed > 0)
+                msg = $"{succeeded} just pushed, {confirmed} already on Strava. Caught up.";
+            else if (succeeded == 1)
+                msg = "Your previous walk was just pushed to Strava.";
+            else if (succeeded > 1)
+                msg = $"Caught up — {succeeded} pending walks just made it to Strava.";
+            else if (confirmed == 1)
+                msg = "Confirmed on Strava (an earlier upload landed even though we never got the response).";
+            else
+                msg = $"All {confirmed} previously-pending walks confirmed on Strava.";
+
             Dispatcher.Invoke(() =>
-                ShowToast(succeeded == 1 ? "Walk Uploaded" : $"{succeeded} Walks Uploaded",
-                          succeeded == 1
-                              ? "Your previous walk was just pushed to Strava."
-                              : $"Caught up — {succeeded} pending walks just made it to Strava.",
-                          displayMs: 6000,
-                          style: ToastStyle.Uploaded));
+                ShowToast(title, msg, displayMs: 6000, style: ToastStyle.Uploaded));
         }
     }
 
@@ -311,22 +333,36 @@ public partial class MainWindow : Window
         catch { /* best-effort; ignore */ }
     }
 
+    private bool _exiting;
+
     protected override void OnStateChanged(EventArgs e)
     {
         base.OnStateChanged(e);
+        // Minimize button → hide to system tray (the walking animation keeps
+        // running, toasts still pop, click the tray icon to restore).
         if (WindowState == WindowState.Minimized)
             Hide();
     }
 
     protected override void OnClosing(CancelEventArgs e)
     {
-        // X button hides to tray; exit via right-click → Exit
-        e.Cancel = true;
-        Hide();
+        // X button → really close. Use the Minimize button if you want tray.
+        // Re-entry guard: Application.Current.Shutdown() will trigger
+        // OnClosing again on its way out.
+        if (_exiting) return;
+        ExitApplication();
     }
 
     private void ExitApplication()
     {
+        if (_exiting) return;
+        _exiting = true;
+
+        // Save any walk currently in progress so it isn't lost on shutdown;
+        // Strava upload kicks off async and will retry on next launch if
+        // it can't finish before the process exits.
+        try { _ble.FinalizeSessionNow(); } catch { /* best-effort */ }
+
         _tray?.Dispose();
         _ble.Dispose();
         _strava.Dispose();
@@ -413,15 +449,70 @@ public partial class MainWindow : Window
     private void QuickConnect_Click(object sender, RoutedEventArgs e)
     {
         if (_savedDevice == null) return;
-        var device = new BleDevice
+        _ = _ble.ConnectAsync(BuildBleDeviceFromSaved(_savedDevice));
+    }
+
+    private static BleDevice BuildBleDeviceFromSaved(SavedDevice saved) => new()
+    {
+        BluetoothAddress = saved.Address,
+        Name             = saved.Name,
+        Address          = saved.Mac,
+        DeviceId         = saved.Address.ToString(),
+        DeviceType       = "Treadmill",
+    };
+
+    /// <summary>
+    /// Re-establishes the BLE connection after the system wakes from sleep.
+    /// Uses a longer retry window than the standard auto-reconnect because
+    /// Windows' BLE stack can take 10–30 seconds to come back up post-wake.
+    /// </summary>
+    private async Task ReconnectAfterWakeAsync()
+    {
+        if (_savedDevice == null) return;
+        if (_ble.State == ConnectionState.Connected) return;
+
+        AppendLog("Reconnecting after system resume...");
+        ShowToast("Welcome back!",
+                  "Reconnecting to your treadmill…",
+                  displayMs: 5000,
+                  style: ToastStyle.Normal);
+
+        // Let Windows' BLE stack settle before the first attempt.
+        await Task.Delay(TimeSpan.FromSeconds(5));
+
+        const int maxAttempts = 6;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            BluetoothAddress = _savedDevice.Address,
-            Name             = _savedDevice.Name,
-            Address          = _savedDevice.Mac,
-            DeviceId         = _savedDevice.Address.ToString(),
-            DeviceType       = "Treadmill",
-        };
-        _ = _ble.ConnectAsync(device);
+            if (_ble.State == ConnectionState.Connected)
+            {
+                ShowToast("Reconnected",
+                          $"Back online with {_savedDevice.Name}.",
+                          displayMs: 5000,
+                          style: ToastStyle.ThumbsUp);
+                return;
+            }
+
+            try { await _ble.ConnectAsync(BuildBleDeviceFromSaved(_savedDevice)); }
+            catch (Exception ex) { AppendLog($"Resume-reconnect attempt {attempt} failed: {ex.Message}"); }
+
+            if (_ble.State == ConnectionState.Connected)
+            {
+                ShowToast("Reconnected",
+                          $"Back online with {_savedDevice.Name}.",
+                          displayMs: 5000,
+                          style: ToastStyle.ThumbsUp);
+                return;
+            }
+
+            if (attempt < maxAttempts)
+                await Task.Delay(TimeSpan.FromSeconds(5));
+        }
+
+        AppendLog("Could not reconnect after wake. Click Quick Connect when ready.");
+        ShowToast("Couldn't Reconnect",
+                  "BLE didn't come back. Click Quick Connect when ready.",
+                  displayMs: 8000,
+                  style: ToastStyle.LostConnection);
     }
 
     // =========================================================================
