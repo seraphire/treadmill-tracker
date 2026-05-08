@@ -377,6 +377,12 @@ public partial class MainWindow : Window
 
     private void Exit_Click(object sender, RoutedEventArgs e) => ExitApplication();
 
+    private void Stats_Click(object sender, RoutedEventArgs e)
+    {
+        var stats = new StatsWindow(_appData) { Owner = this };
+        stats.ShowDialog();
+    }
+
     private void Settings_Click(object sender, RoutedEventArgs e) => OpenSettings();
 
     private void FindDevice_Click(object sender, RoutedEventArgs e) => OpenSettings();

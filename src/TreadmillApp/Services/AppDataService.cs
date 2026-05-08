@@ -281,6 +281,37 @@ public class AppDataService
     }
 
     /// <summary>
+    /// Longest-ever consecutive-days streak across the entire history.
+    /// </summary>
+    public int ComputeLongestStreakDays()
+    {
+        var sessions = LoadSessions();
+        if (sessions.Count == 0) return 0;
+
+        var walkDates = sessions
+            .Select(s => s.StartTime.Date)
+            .Distinct()
+            .OrderBy(d => d)
+            .ToList();
+
+        int longest = 1;
+        int current = 1;
+        for (int i = 1; i < walkDates.Count; i++)
+        {
+            if (walkDates[i] == walkDates[i - 1].AddDays(1))
+            {
+                current++;
+                if (current > longest) longest = current;
+            }
+            else
+            {
+                current = 1;
+            }
+        }
+        return longest;
+    }
+
+    /// <summary>
     /// Number of consecutive days (ending today, or yesterday if today has
     /// no walk yet) that include at least one logged walk. Used for the
     /// "🔥 N day streak" display.

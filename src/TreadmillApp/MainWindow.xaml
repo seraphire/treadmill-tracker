@@ -41,6 +41,7 @@
         <!-- Menu bar -->
         <Menu Grid.Row="0" Background="#F4F4F4" BorderBrush="#DDDDDD" BorderThickness="0,0,0,1">
             <MenuItem Header="_File">
+                <MenuItem Header="_Stats..."    Click="Stats_Click"    InputGestureText="Ctrl+T"/>
                 <MenuItem Header="_Settings..." Click="Settings_Click" InputGestureText="Ctrl+,"/>
                 <Separator/>
                 <MenuItem Header="E_xit" Click="Exit_Click" InputGestureText="Alt+F4"/>

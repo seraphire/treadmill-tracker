@@ -1,0 +1,264 @@
+<Window x:Class="TreadmillApp.StatsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Stats"
+        Width="720" Height="640"
+        MinWidth="540" MinHeight="480"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+
+    <Window.Resources>
+        <Style x:Key="SectionHeader" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#444444"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+        <Style x:Key="TileLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Foreground" Value="#888888"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style x:Key="TileValue" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="22"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#1A1A2E"/>
+            <Setter Property="Margin" Value="0,2,0,0"/>
+        </Style>
+        <Style x:Key="TileSubtle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="#666666"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled" Padding="0,0,4,0">
+            <StackPanel>
+
+                <!-- ─── Today ─────────────────────────────────────────────────── -->
+                <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="4"
+                        Padding="14,12" Margin="0,0,0,10" Background="#FAFAFA">
+                    <StackPanel>
+                        <TextBlock Text="Today" Style="{StaticResource SectionHeader}"/>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Text="DISTANCE" Style="{StaticResource TileLabel}"/>
+                                <TextBlock x:Name="TodayDistanceValue" Text="0.00 km" Style="{StaticResource TileValue}"/>
+                                <TextBlock x:Name="TodayDistanceGoal"  Text="" Style="{StaticResource TileSubtle}" Margin="0,2,0,4"/>
+                                <Grid x:Name="TodayDistanceBar" Height="6" Margin="0,2,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition x:Name="TodayDistanceFill" Width="0*"/>
+                                        <ColumnDefinition x:Name="TodayDistanceRest" Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" x:Name="TodayDistanceFillBorder" Background="#22C55E" CornerRadius="2"/>
+                                    <Border Grid.Column="1" Background="#E5E7EB" CornerRadius="2"/>
+                                </Grid>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                                <TextBlock Text="STEPS" Style="{StaticResource TileLabel}"/>
+                                <TextBlock x:Name="TodayStepsValue" Text="0" Style="{StaticResource TileValue}"/>
+                                <TextBlock x:Name="TodayStepsGoal"  Text="" Style="{StaticResource TileSubtle}" Margin="0,2,0,4"/>
+                                <Grid Height="6" Margin="0,2,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition x:Name="TodayStepsFill" Width="0*"/>
+                                        <ColumnDefinition x:Name="TodayStepsRest" Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" x:Name="TodayStepsFillBorder" Background="#22C55E" CornerRadius="2"/>
+                                    <Border Grid.Column="1" Background="#E5E7EB" CornerRadius="2"/>
+                                </Grid>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2" Margin="0,0,8,0">
+                                <TextBlock Text="CALORIES" Style="{StaticResource TileLabel}"/>
+                                <TextBlock x:Name="TodayCaloriesValue" Text="0" Style="{StaticResource TileValue}"/>
+                                <TextBlock Text="kcal" Style="{StaticResource TileSubtle}" Margin="0,2,0,0"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="3">
+                                <TextBlock Text="TIME" Style="{StaticResource TileLabel}"/>
+                                <TextBlock x:Name="TodayTimeValue" Text="0 min" Style="{StaticResource TileValue}"/>
+                                <TextBlock x:Name="TodayWalksValue" Text="0 walks" Style="{StaticResource TileSubtle}" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- ─── This Week ─────────────────────────────────────────────── -->
+                <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="4"
+                        Padding="14,12" Margin="0,0,0,10" Background="#FAFAFA">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,8">
+                            <TextBlock Text="This Week" Style="{StaticResource SectionHeader}" Margin="0"/>
+                            <TextBlock x:Name="WeekTotalValue" Text="0.00 km · 0 walks"
+                                       FontSize="11" Foreground="#666"
+                                       HorizontalAlignment="Right"/>
+                        </Grid>
+
+                        <Grid Height="120">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"/>     <!-- bars -->
+                                <RowDefinition Height="Auto"/>   <!-- value labels -->
+                                <RowDefinition Height="Auto"/>   <!-- day labels -->
+                            </Grid.RowDefinitions>
+
+                            <!-- bars (filled in code-behind) -->
+                            <Border Grid.Row="0" Grid.Column="0" x:Name="WeekBar0" Background="#3B82F6"
+                                    HorizontalAlignment="Center" Width="22" VerticalAlignment="Bottom"
+                                    CornerRadius="2,2,0,0" Margin="0"/>
+                            <Border Grid.Row="0" Grid.Column="1" x:Name="WeekBar1" Background="#3B82F6"
+                                    HorizontalAlignment="Center" Width="22" VerticalAlignment="Bottom"
+                                    CornerRadius="2,2,0,0"/>
+                            <Border Grid.Row="0" Grid.Column="2" x:Name="WeekBar2" Background="#3B82F6"
+                                    HorizontalAlignment="Center" Width="22" VerticalAlignment="Bottom"
+                                    CornerRadius="2,2,0,0"/>
+                            <Border Grid.Row="0" Grid.Column="3" x:Name="WeekBar3" Background="#3B82F6"
+                                    HorizontalAlignment="Center" Width="22" VerticalAlignment="Bottom"
+                                    CornerRadius="2,2,0,0"/>
+                            <Border Grid.Row="0" Grid.Column="4" x:Name="WeekBar4" Background="#3B82F6"
+                                    HorizontalAlignment="Center" Width="22" VerticalAlignment="Bottom"
+                                    CornerRadius="2,2,0,0"/>
+                            <Border Grid.Row="0" Grid.Column="5" x:Name="WeekBar5" Background="#3B82F6"
+                                    HorizontalAlignment="Center" Width="22" VerticalAlignment="Bottom"
+                                    CornerRadius="2,2,0,0"/>
+                            <Border Grid.Row="0" Grid.Column="6" x:Name="WeekBar6" Background="#22C55E"
+                                    HorizontalAlignment="Center" Width="22" VerticalAlignment="Bottom"
+                                    CornerRadius="2,2,0,0"/>
+
+                            <!-- Per-day value labels (km) -->
+                            <TextBlock Grid.Row="1" Grid.Column="0" x:Name="WeekVal0" Text="" HorizontalAlignment="Center" FontSize="10" Foreground="#888" Margin="0,3,0,0"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" x:Name="WeekVal1" Text="" HorizontalAlignment="Center" FontSize="10" Foreground="#888" Margin="0,3,0,0"/>
+                            <TextBlock Grid.Row="1" Grid.Column="2" x:Name="WeekVal2" Text="" HorizontalAlignment="Center" FontSize="10" Foreground="#888" Margin="0,3,0,0"/>
+                            <TextBlock Grid.Row="1" Grid.Column="3" x:Name="WeekVal3" Text="" HorizontalAlignment="Center" FontSize="10" Foreground="#888" Margin="0,3,0,0"/>
+                            <TextBlock Grid.Row="1" Grid.Column="4" x:Name="WeekVal4" Text="" HorizontalAlignment="Center" FontSize="10" Foreground="#888" Margin="0,3,0,0"/>
+                            <TextBlock Grid.Row="1" Grid.Column="5" x:Name="WeekVal5" Text="" HorizontalAlignment="Center" FontSize="10" Foreground="#888" Margin="0,3,0,0"/>
+                            <TextBlock Grid.Row="1" Grid.Column="6" x:Name="WeekVal6" Text="" HorizontalAlignment="Center" FontSize="10" Foreground="#888" Margin="0,3,0,0"/>
+
+                            <!-- Day-of-week labels (Mon-Sun) -->
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Mon" HorizontalAlignment="Center" FontSize="11" Foreground="#444" FontWeight="SemiBold" Margin="0,2,0,0"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="Tue" HorizontalAlignment="Center" FontSize="11" Foreground="#444" FontWeight="SemiBold" Margin="0,2,0,0"/>
+                            <TextBlock Grid.Row="2" Grid.Column="2" Text="Wed" HorizontalAlignment="Center" FontSize="11" Foreground="#444" FontWeight="SemiBold" Margin="0,2,0,0"/>
+                            <TextBlock Grid.Row="2" Grid.Column="3" Text="Thu" HorizontalAlignment="Center" FontSize="11" Foreground="#444" FontWeight="SemiBold" Margin="0,2,0,0"/>
+                            <TextBlock Grid.Row="2" Grid.Column="4" Text="Fri" HorizontalAlignment="Center" FontSize="11" Foreground="#444" FontWeight="SemiBold" Margin="0,2,0,0"/>
+                            <TextBlock Grid.Row="2" Grid.Column="5" Text="Sat" HorizontalAlignment="Center" FontSize="11" Foreground="#444" FontWeight="SemiBold" Margin="0,2,0,0"/>
+                            <TextBlock Grid.Row="2" Grid.Column="6" Text="Sun" HorizontalAlignment="Center" FontSize="11" Foreground="#444" FontWeight="SemiBold" Margin="0,2,0,0"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- ─── Streak ────────────────────────────────────────────────── -->
+                <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="4"
+                        Padding="14,12" Margin="0,0,0,10" Background="#FAFAFA">
+                    <StackPanel>
+                        <TextBlock Text="Streak" Style="{StaticResource SectionHeader}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="🔥 CURRENT" Style="{StaticResource TileLabel}"/>
+                                <TextBlock x:Name="CurrentStreakValue" Text="0 days" Style="{StaticResource TileValue}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="🏅 LONGEST" Style="{StaticResource TileLabel}"/>
+                                <TextBlock x:Name="LongestStreakValue" Text="0 days" Style="{StaticResource TileValue}"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- ─── All Time ──────────────────────────────────────────────── -->
+                <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="4"
+                        Padding="14,12" Margin="0,0,0,4" Background="#FAFAFA">
+                    <StackPanel>
+                        <TextBlock Text="All Time" Style="{StaticResource SectionHeader}"/>
+
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Text="WALKS" Style="{StaticResource TileLabel}"/>
+                                <TextBlock x:Name="AllTimeWalksValue" Text="0" Style="{StaticResource TileValue}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                                <TextBlock Text="DISTANCE" Style="{StaticResource TileLabel}"/>
+                                <TextBlock x:Name="AllTimeDistanceValue" Text="0.00 km" Style="{StaticResource TileValue}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Margin="0,0,8,0">
+                                <TextBlock Text="CALORIES" Style="{StaticResource TileLabel}"/>
+                                <TextBlock x:Name="AllTimeCaloriesValue" Text="0" Style="{StaticResource TileValue}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="3">
+                                <TextBlock Text="TIME" Style="{StaticResource TileLabel}"/>
+                                <TextBlock x:Name="AllTimeTimeValue" Text="0 min" Style="{StaticResource TileValue}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel>
+                            <Grid Margin="0,2,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="160"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Longest single walk:" Foreground="#666"/>
+                                <TextBlock Grid.Column="1" x:Name="LongestWalkValue" Text="—" FontWeight="SemiBold"/>
+                            </Grid>
+                            <Grid Margin="0,4,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="160"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Fastest avg pace:" Foreground="#666"/>
+                                <TextBlock Grid.Column="1" x:Name="FastestPaceValue" Text="—" FontWeight="SemiBold"/>
+                            </Grid>
+                            <Grid Margin="0,4,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="160"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="First walk:" Foreground="#666"/>
+                                <TextBlock Grid.Column="1" x:Name="FirstWalkValue" Text="—" FontWeight="SemiBold"/>
+                            </Grid>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <Button Grid.Row="1" Content="Close" HorizontalAlignment="Right"
+                MinWidth="90" Padding="14,6" Margin="0,12,0,0"
+                IsCancel="True" Click="Close_Click"/>
+    </Grid>
+</Window>

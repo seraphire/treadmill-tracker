@@ -12,15 +12,17 @@ Tick items as we ship them; commit the updated list alongside the change.
 - [ ] **Dark theme** — recolor main window + Settings dialog to match the
       toast palette (`#1E1E2E` background, `#3A3A5C` borders, light text on
       dark surfaces). Restyle `GroupBox` / `ListView` / `ListBox` / buttons.
-- [ ] **Stats window** opened from `File → Stats…`, dark-themed to match:
-  - Today panel — distance/steps progress bars (color shift at goal), kcal,
-    walking time, walk count
-  - This Week panel — Mon–Sun mini bar chart + weekly km total
-  - Streak panel — current + longest streak, fire icon
-  - All-time panel — total walks · km · kcal · time, longest single walk,
-    fastest avg pace, first walked date
-  - *(v2)* Calendar heatmap of the last 30 days, click a day to drill in
-  - *(v2)* Walk / Jog / Run breakdown (pie or stacked bar)
+- [x] **Stats window** v1 — opened from `File → Stats…` (Ctrl+T):
+      Today (distance/steps progress bars, kcal, walking time, walk count),
+      This Week (Mon–Sun bar chart + weekly km total), Streak (current +
+      longest), All-time (total walks · km · kcal · time, longest single
+      walk, fastest avg pace, first walked date). Light theme for now;
+      will pick up the dark theme alongside the rest of the app.
+- [ ] **Stats window v2 polish**:
+  - Calendar heatmap of the last 30 days, click a day to drill in
+  - Walk / Jog / Run breakdown (pie or stacked bar)
+  - Personal Records section (longest week, biggest single day, etc.)
+  - Apply dark theme when the rest of the app converts
 
 ## Soon
 
@@ -29,6 +31,51 @@ Tick items as we ship them; commit the updated list alongside the change.
   - Stats window gets a Challenge panel with big progress bar, total km
     vs target, ETA based on last-30-days pace
   - Milestone toasts (25 / 50 / 75 / 100 %) using `winning.png`
+
+- [ ] **Pull walks from Strava** — re-OAuth to add `activity:read`
+      scope alongside the existing `activity:write`, then on every app
+      launch (and on demand from a Settings button) fetch recent
+      Walk / Run / Hike activities and merge them into local session
+      history. Two vacation-prep use cases this unlocks:
+  - **Streak survival on the road** — walks logged via the Strava
+    mobile app on vacation count toward the daily streak. Sessions
+    imported from Strava arrive with totals only (no live speed
+    samples), so the existing `ClassifyWalk` runs on the activity's
+    average speed.
+  - **Healing false-negative uploads** — when our app shows
+    *"Couldn't Upload"* but the activity actually made it (timeout /
+    dropped-connection case), the next-launch pull recovers the real
+    activity ID, updates the local record's `StravaActivityId`, and
+    the *"view on Strava"* link comes back.
+  - Match local ↔ Strava by `start_date_local` within a ~5 min
+    window. Strava-only activities (no local match) become new
+    local session records. Out of scope for v1: bidirectional edits,
+    deleting from our app, conflict resolution.
+  - Settings → Strava gets a *"Reconnect (additional permissions)"*
+    button for users who already authorized with write-only scope.
+
+- [ ] **Travel mode** — explicit "I'm away" status, distinct from a
+      Streak Freeze. Two interaction patterns, **both required**:
+  - **Forward-looking**: before a trip, set a start + end date in
+    Settings → Goals. While inside the range, the streak is preserved
+    without requiring a walk; the daily-totals display reads
+    *"On vacation"* instead of counting toward the goal.
+  - **Retroactive**: flag past dates as vacation *after the fact*,
+    for the realistic case of *"got home, realized I forgot to set it,
+    streak is now broken."* Surfaced (a) in Settings → Goals as a
+    list of ranges with add / edit / delete, and (b) once the Stats
+    calendar heatmap lands, right-click → *"Mark as vacation"* on
+    any missed day or range. Retroactive flags must heal the streak
+    counter and the daily totals view immediately.
+  - Edge cases worth noting in design: overlapping ranges merge;
+    real walks logged during a vacation range still count toward
+    stats and Strava (vacation just suppresses the *requirement*);
+    ranges may extend into the future. Storage: list of `{Start,
+    End, Note}` in `flags.json`, or a dedicated `vacations.json` if
+    it grows.
+  - *(Inspired by Fito's Streak Shield and Gentler Streak's rest
+    status — neither supports retroactive flagging, which is the
+    feature that makes this actually useful.)*
 
 - [ ] **Treadmill remote control** (opt-in per connection)
   - Discovery: probe for FTMS Control Point characteristic (`0x2AD9`)
@@ -62,11 +109,6 @@ Tick items as we ship them; commit the updated list alongside the change.
 - [ ] **Custom chrome** (borderless main window with handcrafted title-bar
       buttons). Only if the default Windows chrome still looks wrong after
       the dark theme lands.
-- [ ] **`activity:read` Strava scope** — re-OAuth required. Lets us verify
-      timeout-induced false-negatives by querying the activity directly,
-      and pull historical data for streak / Conqueror cross-validation.
-- [ ] **Strava-inclusive streak** — count outdoor walks/runs/rides from
-      the Strava feed, not only sessions logged through this app.
 - [ ] **Smarter daily nag** — afternoon prompt if no walk has been logged
       by, say, 4 pm; current logic only fires once at app launch.
 - [ ] **Activity edit / delete** in the Today's Activity list — right-click
