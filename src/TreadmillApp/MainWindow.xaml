@@ -47,7 +47,9 @@
                 <MenuItem Header="E_xit" Click="Exit_Click" InputGestureText="Alt+F4"/>
             </MenuItem>
             <MenuItem Header="_Help">
-                <MenuItem Header="_About" Click="About_Click"/>
+                <MenuItem Header="View _Log..." Click="ViewLog_Click"/>
+                <Separator/>
+                <MenuItem Header="_About"       Click="About_Click"/>
             </MenuItem>
         </Menu>
 
@@ -56,8 +58,7 @@
             <RowDefinition Height="Auto"/>  <!-- Status bar -->
             <RowDefinition Height="Auto"/>  <!-- Buttons -->
             <RowDefinition Height="Auto"/>  <!-- Live metrics -->
-            <RowDefinition Height="190"/>   <!-- Today's activity -->
-            <RowDefinition Height="*"/>     <!-- Log -->
+            <RowDefinition Height="*"/>     <!-- Today's activity -->
         </Grid.RowDefinitions>
 
         <!-- Status bar -->
@@ -81,9 +82,10 @@
                 <Button x:Name="QuickConnectButton" Content="Quick Connect" Style="{StaticResource ActionButton}" IsEnabled="False" Click="QuickConnect_Click"/>
                 <Button x:Name="DisconnectButton"   Content="Disconnect"    Style="{StaticResource ActionButton}" IsEnabled="False" Click="Disconnect_Click"/>
             </StackPanel>
-            <Button x:Name="FindDeviceButton" Content="Find Device..."
-                    Style="{StaticResource ActionButton}" HorizontalAlignment="Right"
-                    Margin="0" Click="FindDevice_Click"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="StatsButton"      Content="Stats"           Style="{StaticResource ActionButton}" Click="Stats_Click"/>
+                <Button x:Name="FindDeviceButton" Content="Find Device..."  Style="{StaticResource ActionButton}" Margin="0" Click="FindDevice_Click"/>
+            </StackPanel>
         </Grid>
 
         <!-- Live metrics panel -->
@@ -148,7 +150,7 @@
         </Border>
 
         <!-- Today's Activity -->
-        <GroupBox Grid.Row="3" Header="Today's Activity" Margin="0,0,0,8">
+        <GroupBox Grid.Row="3" Header="Today's Activity">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*"/>
@@ -195,13 +197,6 @@
             </Grid>
         </GroupBox>
 
-        <!-- Log -->
-        <GroupBox Grid.Row="4" Header="Log">
-            <ListBox x:Name="LogList" FontFamily="Consolas" FontSize="11"
-                     BorderThickness="0"
-                     VirtualizingPanel.IsVirtualizing="True"
-                     VirtualizingPanel.ScrollUnit="Item"/>
-        </GroupBox>
         </Grid>
     </Grid>
 </Window>

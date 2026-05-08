@@ -19,6 +19,10 @@ public partial class MainWindow : Window
     private readonly StravaService                          _strava   = new();
     private readonly ObservableCollection<SessionViewModel> _sessions = new();
     private readonly List<TreadmillSession>                 _todaySessions = new();
+    // In-memory log buffer (capped). Backs the on-demand Help → View Log
+    // window; not shown on the main UI to keep it user-facing rather than
+    // engineer-facing.
+    private readonly ObservableCollection<string>           _logEntries    = new();
 
     private SessionViewModel? _activeSessionVm;
     private SavedDevice?      _savedDevice;
@@ -399,6 +403,12 @@ public partial class MainWindow : Window
         _ = RetryUnuploadedSessionsAsync();
     }
 
+    private void ViewLog_Click(object sender, RoutedEventArgs e)
+    {
+        var log = new LogWindow(_logEntries) { Owner = this };
+        log.Show();
+    }
+
     private void About_Click(object sender, RoutedEventArgs e)
     {
         System.Windows.MessageBox.Show(
@@ -649,8 +659,13 @@ public partial class MainWindow : Window
 
     private void AppendLog(string msg)
     {
-        LogList.Items.Add(msg);
-        LogList.ScrollIntoView(LogList.Items[LogList.Items.Count - 1]);
+        _logEntries.Add(msg);
+        // Cap the in-memory log so a long-running session doesn't grow without
+        // bound. 500 entries is plenty for diagnosing the most recent issue
+        // while keeping the cost of opening the Log window trivial.
+        const int MaxLogEntries = 500;
+        while (_logEntries.Count > MaxLogEntries)
+            _logEntries.RemoveAt(0);
     }
 
     private static void ShowToast(string title, string message, int displayMs = 5000,
