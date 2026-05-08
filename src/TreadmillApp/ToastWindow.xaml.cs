@@ -117,16 +117,15 @@ public partial class ToastWindow : Window
         MessageText.LineHeight = 20;
     }
 
-    private void PositionBottomRight()
-    {
-        var area = SystemParameters.WorkArea;
-        Left = area.Right  - Width  - 14;
-        Top  = area.Bottom - Height - 14;
-    }
+    private void PositionBottomRight() => ToastStack.Place(this);
 
     private void FadeAndClose()
     {
         _dismissTimer.Stop();
+        // Free our slot in the stack right away so any other toasts above
+        // us slide down during our fade-out (rather than waiting for
+        // Window.Closed to fire after the animation completes).
+        ToastStack.BeginRemove(this);
         var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(350));
         fadeOut.Completed += (_, _) => Close();
         BeginAnimation(OpacityProperty, fadeOut);

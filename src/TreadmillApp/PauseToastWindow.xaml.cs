@@ -99,12 +99,7 @@ public partial class PauseToastWindow : Window
         return sec == 0 ? $"{min} min" : $"{min} min {sec:D2} sec";
     }
 
-    private void PositionBottomRight()
-    {
-        var area = SystemParameters.WorkArea;
-        Left = area.Right  - Width  - 14;
-        Top  = area.Bottom - Height - 14;
-    }
+    private void PositionBottomRight() => ToastStack.Place(this);
 
     private void Hide_Click(object sender, RoutedEventArgs e)
     {
@@ -129,6 +124,7 @@ public partial class PauseToastWindow : Window
         if (_closing) return;
         _closing = true;
         _ticker.Stop();
+        ToastStack.BeginRemove(this);
         var fadeOut = new DoubleAnimation(Opacity, 0, TimeSpan.FromMilliseconds(300));
         fadeOut.Completed += (_, _) => Close();
         BeginAnimation(OpacityProperty, fadeOut);
