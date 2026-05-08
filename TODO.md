@@ -12,6 +12,25 @@ Tick items as we ship them; commit the updated list alongside the change.
 - [ ] **Dark theme** — recolor main window + Settings dialog to match the
       toast palette (`#1E1E2E` background, `#3A3A5C` borders, light text on
       dark surfaces). Restyle `GroupBox` / `ListView` / `ListBox` / buttons.
+  - **Tooling options to explore before diving in**:
+    - **Figma** (web, free) — mock up the dark main window visually, then
+      hand screenshots / inspector CSS values to Claude to translate to
+      XAML. Best for "I want a custom look but iterate without WPF builds."
+    - **Realtime Colors** (https://realtimecolors.com/) — paste in the
+      toast palette and see it applied to a sample UI live; great for
+      refining the exact shades before committing.
+    - **MahApps.Metro** or **Material Design In XAML Toolkit** (NuGet) —
+      drop-in modern WPF theming. ~30 min to get a polished dark theme
+      across the whole app; trades custom feel for instant cohesion.
+      Worth at least *trying* with our existing chibi-character toasts
+      to see if the combination clicks before committing to hand-rolled
+      styles. If yes, layer custom touches on top.
+    - **v0.dev / Galileo AI / UIzard** — AI mockup generators if we want
+      design-direction help. Output isn't WPF-native but the visual
+      decisions translate.
+    - **Blend for Visual Studio** — native WPF style/template editor,
+      ships with VS. Good for fine-tuning control templates but Figma
+      is friendlier for the broader composition work.
 - [x] **Stats window** v1 — opened from `File → Stats…` (Ctrl+T):
       Today (distance/steps progress bars, kcal, walking time, walk count),
       This Week (Mon–Sun bar chart + weekly km total), Streak (current +
