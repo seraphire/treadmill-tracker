@@ -128,6 +128,32 @@ Tick items as we ship them; commit the updated list alongside the change.
 - [ ] **Custom chrome** (borderless main window with handcrafted title-bar
       buttons). Only if the default Windows chrome still looks wrong after
       the dark theme lands.
+- [ ] **Incline tracking & control** — for treadmills that have a
+      powered incline. The FS-18F451 this user owns doesn't, but most
+      mid-tier and up FTMS treadmills do, and elevation unlocks
+      mountain-summit Conqueror challenges.
+  - **Display**: live incline tile in the metrics panel, conditionally
+    shown only on machines that report it. Detect support either by
+    reading the FTMS Fitness Machine Feature characteristic (`0x2ACC`,
+    bit for "Incline supported") or by observing whether
+    `TreadmillMetrics.Inclination` ever arrives non-null.
+  - **Persistence**: capture min / max / avg incline per session on
+    `SessionRecord`, plus total **elevation gain** (Σ incline-fraction
+    × distance-delta over the session).
+  - **Strava**: include `total_elevation_gain` (meters) in the upload
+    payload — Strava renders this as the elevation profile in the
+    activity card and treats it as a first-class metric.
+  - **Stats**: Elevation tile in the All-Time panel; "biggest climb in
+    a single walk" personal record.
+  - **Remote control hook**: when the Treadmill Remote Control feature
+    lands, add ▲ / ▼ Incline buttons alongside Speed using FTMS
+    opcode `0x03 Set Target Inclination` (signed int16 LE in 0.1°).
+    Same opt-in-per-connection gate.
+  - **Already half-done**: `FtmsDataParser` parses the inclination
+    field; `TreadmillMetrics` has the property. The remaining work is
+    wiring the data through to UI / `SessionRecord` / Strava upload,
+    plus the conditional-display detection.
+
 - [ ] **Smarter daily nag** — afternoon prompt if no walk has been logged
       by, say, 4 pm; current logic only fires once at app launch.
 - [ ] **Activity edit / delete** in the Today's Activity list — right-click
