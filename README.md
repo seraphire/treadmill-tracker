@@ -92,6 +92,21 @@ your Windows user). They never touch the working directory.
 
 ---
 
+## Wending Integration
+
+TreadmillApp is designed to feed live treadmill data to **Wending** — a procedural walking experience that moves the player through a generated world at real walking speed.
+
+The integration uses a 32-byte UDP packet broadcast at 50 Hz to `127.0.0.1:7654`. The full specification — packet format, flag bits, C# struct, serialisation code, cadence calculation, footfall timing notes, and what TreadmillApp needs to implement — lives here:
+
+**[`docs/treadmill-integration.md`](https://github.com/bkeene/Wending/blob/main/docs/treadmill-integration.md)** *(Wending repo)*
+
+Local path if both repos are checked out side-by-side:
+`C:\Users\bkeene\source\repos\Wending\docs\treadmill-integration.md`
+
+Either app runs independently. TreadmillApp without Wending continues logging sessions and uploading to Strava normally. Wending without TreadmillApp falls back to keyboard input.
+
+---
+
 ## License
 
 [MIT](LICENSE) — see the LICENSE file for the full text.
