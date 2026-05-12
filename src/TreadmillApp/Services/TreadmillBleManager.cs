@@ -38,6 +38,9 @@ public class TreadmillBleManager : IDisposable
     private DateTime                      _lastVendorDataTime = DateTime.MinValue;
     private DateTime                      _lastResubscribeTime = DateTime.MinValue;
 
+    // ── Wending UDP broadcaster ───────────────────────────────────────────────
+    private readonly WendingBroadcaster _wending = new();
+
     // ── Session tracking ──────────────────────────────────────────────────────
     // Sessions can span multiple "segments" of walking separated by pauses
     // (e.g. user steps off for water). When a pause exceeds PauseTolerance we
@@ -230,6 +233,7 @@ public class TreadmillBleManager : IDisposable
             SetState(ConnectionState.Connected);
             Log($"Connected to {device.Name}. Recording all data — walk, then disconnect to save capture file.");
 
+            _wending.Start();
             _ = ScanVendorServicesAsync();
         }
         catch (Exception ex)
@@ -242,6 +246,7 @@ public class TreadmillBleManager : IDisposable
     public async Task DisconnectAsync()
     {
         _userDisconnecting = true;
+        _wending.Stop();
         FinalizeActiveSession();
         _pollCts?.Cancel();
         _pollCts = null;
@@ -303,12 +308,14 @@ public class TreadmillBleManager : IDisposable
         _lastFtmsMetrics = metrics;
         MetricsReceived?.Invoke(this, metrics);
         UpdateSessionTracking(metrics);
+        _wending.UpdateMetrics(metrics, _currentSession, isFtms: true);
     }
 
     private void OnDeviceConnectionStatusChanged(BluetoothLEDevice sender, object args)
     {
         if (sender.ConnectionStatus == BluetoothConnectionStatus.Disconnected)
         {
+            _wending.Stop();
             _pollCts?.Cancel();
             _pollCts = null;
 
@@ -509,6 +516,7 @@ public class TreadmillBleManager : IDisposable
             Timestamp      = DateTime.Now
         };
         MetricsReceived?.Invoke(this, merged);
+        _wending.UpdateMetrics(merged, _currentSession, isFtms: false);
     }
 
     // =========================================================================
@@ -728,6 +736,7 @@ public class TreadmillBleManager : IDisposable
     {
         SystemEvents.PowerModeChanged -= OnPowerModeChanged;
         StopScanning();
+        _wending.Dispose();
         _device?.Dispose();
     }
 

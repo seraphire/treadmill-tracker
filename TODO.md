@@ -299,14 +299,14 @@ Two distinct shapes — pick one, or do both eventually.
 Feed live treadmill data to the Wending procedural walking experience via UDP.
 Full spec: `C:\Users\bkeene\source\repos\Wending\docs\treadmill-integration.md`
 
-- [ ] **UDP broadcaster** — background worker sending 32-byte `WendingPacket` at 50 Hz to
+- [x] **UDP broadcaster** — background worker sending 32-byte `WendingPacket` at 50 Hz to
       `127.0.0.1:7654`. Start on treadmill connect; stop on disconnect or app exit.
       Use `System.Net.Sockets.UdpClient`. C# struct and serialisation code are in the spec doc.
-- [ ] **Cadence calculation** — rolling step-count window (~2 s) → steps per minute.
+- [x] **Cadence calculation** — rolling step-count window (~2 s) → steps per minute.
       Update every ~500 ms or on each step event. Write to `CadenceSpm` field.
-- [ ] **`StepTimestampMs`** — record `Environment.TickCount64` each time `TotalSteps`
+- [x] **`StepTimestampMs`** — record `Environment.TickCount64` each time `TotalSteps`
       increments. Enables V2 footfall audio lag estimation on the Wending side.
-- [ ] **`PacketSeq`** — ushort counter, increment per packet, wrap at 65535.
+- [x] **`PacketSeq`** — ushort counter, increment per packet, wrap at 65535.
 
 ---
 
