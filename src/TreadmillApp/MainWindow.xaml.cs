@@ -58,7 +58,7 @@ public partial class MainWindow : Window
                 AppendLog($"Walk started at {session.StartTime:HH:mm:ss}");
 
                 _tray?.SetWalking(session.StartTime.ToString("HH:mm"));
-                ShowToast("Walk Started",
+                ShowToast(ToastMessages.WalkStartedTitle(),
                           $"Session logging active — started at {session.StartTime:HH:mm:ss}");
             });
 
@@ -86,7 +86,7 @@ public partial class MainWindow : Window
                 AppendLog("Walk resumed.");
                 _pauseToast?.DismissNow();
                 _pauseToast = null;
-                ShowToast("Welcome back!",
+                ShowToast(ToastMessages.WelcomeBackTitle(),
                           $"Picking up at {session.DistanceMeters} m · {session.Steps} steps. Keep going!",
                           displayMs: 4000,
                           style: ToastStyle.Normal);
@@ -156,7 +156,8 @@ public partial class MainWindow : Window
                 if (!sleepClosing)
                 {
                     ShowToast(
-                        isFirstToday ? "Way to start!" : $"{verbCapitalized} Complete!",
+                        isFirstToday ? ToastMessages.FirstWalkOfDayTitle()
+                                     : ToastMessages.WalkCompleteTitle(verbCapitalized),
                         $"{session.DistanceMeters} m  ·  {session.Steps} steps  ·  " +
                         $"{session.Calories} kcal  ·  {FormatDuration(session.Duration)}",
                         displayMs: 7000,
@@ -258,8 +259,8 @@ public partial class MainWindow : Window
         if (!walkedRecently) return;
 
         _appData.MarkGhostedNagShown(DateTime.Today);
-        ShowToast("Ready when you are.",
-                  "No walk logged today yet — your treadmill is patiently waiting.",
+        ShowToast(ToastMessages.GhostNagTitle(),
+                  ToastMessages.GhostNagMessage(),
                   displayMs: 9000,
                   style: ToastStyle.Ghosted);
     }
@@ -304,7 +305,8 @@ public partial class MainWindow : Window
         int total = succeeded + confirmed;
         if (total > 0)
         {
-            string title = total == 1 ? "Walk Uploaded" : $"{total} Walks Uploaded";
+            string title = total == 1 ? ToastMessages.UploadedTitle()
+                                       : $"{total} Walks Uploaded";
             string msg;
             if (succeeded > 0 && confirmed > 0)
                 msg = $"{succeeded} just pushed, {confirmed} already on Strava. Caught up.";
@@ -324,7 +326,7 @@ public partial class MainWindow : Window
 
     private void ShowUploadedToast(string? activityUrl)
     {
-        ShowToast("Walk Uploaded",
+        ShowToast(ToastMessages.UploadedTitle(),
                   "Pushed to Strava. Click here to view it.",
                   displayMs: 6000,
                   style: ToastStyle.Uploaded,
@@ -488,7 +490,7 @@ public partial class MainWindow : Window
         if (_ble.State == ConnectionState.Connected) return;
 
         AppendLog("Reconnecting after system resume...");
-        ShowToast("Welcome back!",
+        ShowToast(ToastMessages.WelcomeBackTitle(),
                   "Reconnecting to your treadmill…",
                   displayMs: 5000,
                   style: ToastStyle.Normal);
@@ -646,7 +648,7 @@ public partial class MainWindow : Window
             (true, false) => "distance",
             _             => "steps",
         };
-        ShowToast("Daily Goal Hit!",
+        ShowToast(ToastMessages.GoalHitTitle(),
                   $"You crushed your {what} goal — {totalDist / 1000.0:F2} km · {totalSteps} steps.",
                   displayMs: 8000,
                   style: ToastStyle.Winning);

@@ -108,3 +108,4 @@ flags.json
 settings.json
 strava.json
 treadmill-capture-*.txt
+.claude/worktrees
