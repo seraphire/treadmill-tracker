@@ -159,7 +159,12 @@ public class AppDataService
         int       MinWalkSeconds          = 60,   // discard walks shorter than this
         double    JogThresholdKmh         = 6.0,  // average speed at/above this = "jog"
         double    RunThresholdKmh         = 9.0,  // average speed at/above this = "run"
-        bool      MinimizeToTray          = true);
+        bool      MinimizeToTray          = true,
+        double?   WindowLeft              = null,
+        double?   WindowTop               = null,
+        double?   WindowWidth             = null,
+        double?   WindowHeight            = null,
+        bool      WindowMaximized         = false);
 
     private AppFlags LoadFlags()
     {
@@ -280,6 +285,29 @@ public class AppDataService
             var f = LoadFlags();
             SaveFlags(f with { MinimizeToTray = value });
         }
+    }
+
+    public record WindowPlacement(double Left, double Top, double Width, double Height, bool Maximized);
+
+    public WindowPlacement? SavedWindowPlacement
+    {
+        get
+        {
+            var f = LoadFlags();
+            if (f.WindowLeft == null || f.WindowTop == null ||
+                f.WindowWidth == null || f.WindowHeight == null) return null;
+            return new WindowPlacement(f.WindowLeft.Value, f.WindowTop.Value,
+                                       f.WindowWidth.Value, f.WindowHeight.Value,
+                                       f.WindowMaximized);
+        }
+    }
+
+    public void SaveWindowPlacement(double left, double top, double width, double height, bool maximized)
+    {
+        var f = LoadFlags();
+        SaveFlags(f with { WindowLeft = left, WindowTop = top,
+                           WindowWidth = width, WindowHeight = height,
+                           WindowMaximized = maximized });
     }
 
     /// <summary>Classify a session by its average speed using the current thresholds.</summary>

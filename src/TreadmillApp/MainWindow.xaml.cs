@@ -240,6 +240,8 @@ public partial class MainWindow : Window
         if (File.Exists(iconPath))
             Icon = new BitmapImage(new Uri(iconPath));
 
+        RestoreWindowPlacement();
+
         _tray = new TrayIconService(this, ExitApplication);
         ApplyPauseTolerance();
         LoadSavedDevice();
@@ -366,10 +368,44 @@ public partial class MainWindow : Window
         ExitApplication();
     }
 
+    private void SaveWindowPlacement()
+    {
+        // Always save the normal (non-minimized) bounds so a minimized exit
+        // doesn't persist a 0×0 or off-screen position.
+        var bounds = WindowState == WindowState.Normal
+            ? (Left, Top, Width, Height)
+            : (RestoreBounds.Left, RestoreBounds.Top, RestoreBounds.Width, RestoreBounds.Height);
+        _appData.SaveWindowPlacement(bounds.Left, bounds.Top, bounds.Width, bounds.Height,
+                                     WindowState == WindowState.Maximized);
+    }
+
+    private void RestoreWindowPlacement()
+    {
+        var p = _appData.SavedWindowPlacement;
+        if (p == null) return;
+
+        // Guard against a saved position that's entirely off all current screens
+        // (e.g. a monitor was disconnected since last run).
+        var area = System.Windows.Forms.Screen.GetWorkingArea(
+            new System.Drawing.Rectangle((int)p.Left, (int)p.Top, (int)p.Width, (int)p.Height));
+        if (p.Left < area.Left - p.Width  || p.Left > area.Right  ||
+            p.Top  < area.Top  - p.Height || p.Top  > area.Bottom)
+            return;
+
+        Left   = p.Left;
+        Top    = p.Top;
+        Width  = p.Width;
+        Height = p.Height;
+        if (p.Maximized)
+            WindowState = WindowState.Maximized;
+    }
+
     private void ExitApplication()
     {
         if (_exiting) return;
         _exiting = true;
+
+        SaveWindowPlacement();
 
         // Save any walk currently in progress so it isn't lost on shutdown;
         // Strava upload kicks off async and will retry on next launch if
