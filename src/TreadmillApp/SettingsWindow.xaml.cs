@@ -31,6 +31,7 @@ public partial class SettingsWindow : Window
         LoadStravaState();
         LoadWorkoutState();
         LoadGoalsState();
+        LoadAppState();
 
         _ble.DeviceDiscovered += OnDeviceDiscovered;
         _ble.StateChanged     += OnStateChanged;
@@ -367,6 +368,20 @@ public partial class SettingsWindow : Window
 
         _strava.Disconnect();
         UpdateStravaConnectionState();
+    }
+
+    // =========================================================================
+    // App tab
+    // =========================================================================
+
+    private void LoadAppState()
+    {
+        MinimizeToTrayCheck.IsChecked = _appData.MinimizeToTray;
+    }
+
+    private void MinimizeToTrayCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        _appData.MinimizeToTray = MinimizeToTrayCheck.IsChecked == true;
     }
 
     // =========================================================================

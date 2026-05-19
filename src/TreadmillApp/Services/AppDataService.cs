@@ -158,7 +158,8 @@ public class AppDataService
         int       MinWalkSteps            = 1,    // discard walks with fewer steps
         int       MinWalkSeconds          = 60,   // discard walks shorter than this
         double    JogThresholdKmh         = 6.0,  // average speed at/above this = "jog"
-        double    RunThresholdKmh         = 9.0); // average speed at/above this = "run"
+        double    RunThresholdKmh         = 9.0,  // average speed at/above this = "run"
+        bool      MinimizeToTray          = true);
 
     private AppFlags LoadFlags()
     {
@@ -268,6 +269,16 @@ public class AppDataService
         {
             var f = LoadFlags();
             SaveFlags(f with { RunThresholdKmh = Math.Max(0, value) });
+        }
+    }
+
+    public bool MinimizeToTray
+    {
+        get => LoadFlags().MinimizeToTray;
+        set
+        {
+            var f = LoadFlags();
+            SaveFlags(f with { MinimizeToTray = value });
         }
     }
 

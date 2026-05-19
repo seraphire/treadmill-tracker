@@ -311,6 +311,29 @@
                 </Grid>
             </TabItem>
 
+            <!-- App tab -->
+            <TabItem Header="App">
+                <Grid Margin="20">
+                    <StackPanel VerticalAlignment="Top">
+                        <TextBlock Text="Window Behavior" FontSize="14" FontWeight="SemiBold"
+                                   Margin="0,0,0,8"/>
+                        <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="4"
+                                Padding="14,10" Background="#FAFAFA">
+                            <StackPanel>
+                                <CheckBox x:Name="MinimizeToTrayCheck"
+                                          Content="Minimize to system tray"
+                                          FontWeight="SemiBold"
+                                          Checked="MinimizeToTrayCheck_Changed"
+                                          Unchecked="MinimizeToTrayCheck_Changed"/>
+                                <TextBlock Foreground="#777" FontSize="11" TextWrapping="Wrap"
+                                           Margin="20,6,0,0"
+                                           Text="When checked, clicking the minimize button hides the window to the system tray — click the tray icon to restore it. Uncheck to keep the window in the taskbar so you can restore it without accessing the tray (useful if the tray is hidden behind a remote desktop session)."/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
         </TabControl>
 
         <Button Grid.Row="1" Content="Close" HorizontalAlignment="Right"

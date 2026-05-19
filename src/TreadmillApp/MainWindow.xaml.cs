@@ -17,8 +17,10 @@ public partial class MainWindow : Window
     private readonly TreadmillBleManager                    _ble      = new();
     private readonly AppDataService                         _appData  = new();
     private readonly StravaService                          _strava   = new();
-    private readonly ObservableCollection<SessionViewModel> _sessions = new();
-    private readonly List<TreadmillSession>                 _todaySessions = new();
+    private readonly ObservableCollection<object>           _sessions        = new();
+    private readonly List<TreadmillSession>                 _todaySessions   = new();
+    private readonly List<TreadmillSession>                 _displaySessions = new();
+    private readonly Dictionary<TreadmillSession, SessionViewModel> _sessionVms = new();
     // In-memory log buffer (capped). Backs the on-demand Help → View Log
     // window; not shown on the main UI to keep it user-facing rather than
     // engineer-facing.
@@ -53,8 +55,10 @@ public partial class MainWindow : Window
             Dispatcher.Invoke(() =>
             {
                 _todaySessions.Add(session);
+                _displaySessions.Add(session);
                 _activeSessionVm = new SessionViewModel(session);
-                _sessions.Add(_activeSessionVm);
+                _sessionVms[session] = _activeSessionVm;
+                RebuildSessionList();
                 AppendLog($"Walk started at {session.StartTime:HH:mm:ss}");
 
                 _tray?.SetWalking(session.StartTime.ToString("HH:mm"));
@@ -121,9 +125,11 @@ public partial class MainWindow : Window
                               $"{(int)session.Duration.TotalSeconds} sec (below thresholds).");
                     // Roll back state added when SessionStarted fired
                     _todaySessions.Remove(session);
-                    if (_activeSessionVm != null) _sessions.Remove(_activeSessionVm);
+                    _displaySessions.Remove(session);
+                    _sessionVms.Remove(session);
                     _activeSessionVm = null;
                     UpdateDailyTotals();
+                    RebuildSessionList();
                     _tray?.SetConnectedIdle(_connectedDeviceName);
                     return;
                 }
@@ -131,6 +137,7 @@ public partial class MainWindow : Window
                 _activeSessionVm?.Refresh();
                 _activeSessionVm = null;
                 UpdateDailyTotals();
+                RebuildSessionList();
                 CheckGoalHit();
                 _appData.AppendSession(session);
                 AppendLog($"Walk complete — {session.DistanceMeters} m · {session.Steps} steps · " +
@@ -346,7 +353,7 @@ public partial class MainWindow : Window
         base.OnStateChanged(e);
         // Minimize button → hide to system tray (the walking animation keeps
         // running, toasts still pop, click the tray icon to restore).
-        if (WindowState == WindowState.Minimized)
+        if (WindowState == WindowState.Minimized && _appData.MinimizeToTray)
             Hide();
     }
 
@@ -444,18 +451,23 @@ public partial class MainWindow : Window
 
     private void LoadTodaySessions()
     {
-        var today = _appData.LoadSessions()
-                            .Where(r => r.StartTime.Date == DateTime.Today)
-                            .ToList();
+        var yesterday = DateTime.Today.AddDays(-1);
+        var recent = _appData.LoadSessions()
+                             .Where(r => r.StartTime.Date >= yesterday)
+                             .ToList();
 
-        foreach (var record in today)
+        foreach (var record in recent)
         {
             var session = TreadmillSession.FromRecord(record);
-            _todaySessions.Add(session);
-            _sessions.Add(new SessionViewModel(session));
+            if (record.StartTime.Date == DateTime.Today)
+                _todaySessions.Add(session);
+            _displaySessions.Add(session);
+            var vm = new SessionViewModel(session);
+            _sessionVms[session] = vm;
         }
 
         UpdateDailyTotals();
+        RebuildSessionList();
     }
 
     // =========================================================================
@@ -617,6 +629,30 @@ public partial class MainWindow : Window
         DailyScoreText.Text = streak > 1
             ? $"🔥 {streak} day streak  ·  {todayScore}"
             : todayScore;
+
+        DailyKmBigValue.Text    = $"{totalDist / 1000.0:F2}";
+        DailyStepsBigValue.Text = totalSteps.ToString();
+        DailyCalBigValue.Text   = totalCal.ToString();
+        DailyTimeBigValue.Text  = totalTime.TotalMinutes >= 1
+            ? $"{(int)totalTime.TotalMinutes}"
+            : "0";
+    }
+
+    private void RebuildSessionList()
+    {
+        _sessions.Clear();
+        var groups = _displaySessions
+            .GroupBy(s => s.StartTime.Date)
+            .OrderByDescending(g => g.Key);
+        foreach (var group in groups)
+        {
+            _sessions.Add(new DateSeparatorItem(group.Key));
+            foreach (var s in group.OrderByDescending(s => s.StartTime))
+            {
+                if (_sessionVms.TryGetValue(s, out var vm))
+                    _sessions.Add(vm);
+            }
+        }
     }
 
     /// <summary>
@@ -702,23 +738,39 @@ public partial class MainWindow : Window
     private static string FormatDuration(TimeSpan d) =>
         d.TotalHours >= 1 ? d.ToString(@"h\:mm\:ss") : d.ToString(@"mm\:ss");
 
-    // =========================================================================
-    // Session view model
-    // =========================================================================
+}
 
-    private sealed class SessionViewModel : INotifyPropertyChanged
+public sealed class SessionViewModel : INotifyPropertyChanged
+{
+    private readonly TreadmillSession _s;
+    public SessionViewModel(TreadmillSession s) => _s = s;
+
+    public string StartDisplay    => _s.StartTime.ToString("HH:mm");
+    public string DurationDisplay
     {
-        private readonly TreadmillSession _s;
-        public SessionViewModel(TreadmillSession s) => _s = s;
+        get
+        {
+            var d = _s.Duration;
+            return d.TotalHours >= 1 ? d.ToString(@"h\:mm\:ss") : d.ToString(@"mm\:ss");
+        }
+    }
+    public string AvgSpeedDisplay => _s.AverageSpeedKmh > 0 ? $"{_s.AverageSpeedKmh:F1}" : "--";
+    public string StepsDisplay    => _s.Steps > 0 ? _s.Steps.ToString() : "--";
+    public string DistanceDisplay => _s.DistanceMeters > 0 ? $"{_s.DistanceMeters} m" : "--";
+    public string StatusDisplay   => _s.IsActive ? "● Active" : "✓ Done";
+    public bool   IsActive        => _s.IsActive;
 
-        public string StartDisplay    => _s.StartTime.ToString("HH:mm");
-        public string DurationDisplay => FormatDuration(_s.Duration);
-        public string AvgSpeedDisplay => _s.AverageSpeedKmh > 0 ? $"{_s.AverageSpeedKmh:F1}" : "--";
-        public string StepsDisplay    => _s.Steps > 0 ? _s.Steps.ToString() : "--";
-        public string DistanceDisplay => _s.DistanceMeters > 0 ? $"{_s.DistanceMeters} m" : "--";
-        public string StatusDisplay   => _s.IsActive ? "● Active" : "✓ Done";
+    public void Refresh() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
+    public event PropertyChangedEventHandler? PropertyChanged;
+}
 
-        public void Refresh() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
-        public event PropertyChangedEventHandler? PropertyChanged;
+public sealed class DateSeparatorItem
+{
+    public string Label { get; }
+    public DateSeparatorItem(DateTime date)
+    {
+        if      (date.Date == DateTime.Today)             Label = "Today";
+        else if (date.Date == DateTime.Today.AddDays(-1)) Label = "Yesterday";
+        else                                              Label = date.ToString("dddd, MMMM d");
     }
 }
