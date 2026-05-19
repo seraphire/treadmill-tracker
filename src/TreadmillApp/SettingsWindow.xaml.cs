@@ -18,11 +18,11 @@ public partial class SettingsWindow : Window
 
     public SettingsWindow(TreadmillBleManager ble, AppDataService appData, StravaService strava)
     {
-        InitializeComponent();
-
         _ble     = ble;
         _appData = appData;
         _strava  = strava;
+
+        InitializeComponent();
 
         DeviceList.ItemsSource = _devices;
 
