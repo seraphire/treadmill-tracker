@@ -127,6 +127,17 @@ public class AppDataService
     public List<SessionRecord> LoadUnuploadedSessions()
         => LoadSessions().Where(s => !s.IsUploaded).ToList();
 
+    public void DeleteSession(DateTime startTime)
+    {
+        try
+        {
+            var all = LoadSessions();
+            all.RemoveAll(s => s.StartTime == startTime);
+            File.WriteAllText(SessionsPath, JsonSerializer.Serialize(all, JsonOpts));
+        }
+        catch { }
+    }
+
     /// <summary>
     /// Marks the session as "do not retry uploading" — used when Strava
     /// considers it a duplicate of an existing activity. Stored as

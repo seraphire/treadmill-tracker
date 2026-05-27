@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Reflection;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using WpfColor = System.Windows.Media.Color;
@@ -56,7 +57,7 @@ public partial class MainWindow : Window
             {
                 _todaySessions.Add(session);
                 _displaySessions.Add(session);
-                _activeSessionVm = new SessionViewModel(session);
+                _activeSessionVm = MakeSessionVm(session);
                 _sessionVms[session] = _activeSessionVm;
                 RebuildSessionList();
                 AppendLog($"Walk started at {session.StartTime:HH:mm:ss}");
@@ -498,7 +499,7 @@ public partial class MainWindow : Window
             if (record.StartTime.Date == DateTime.Today)
                 _todaySessions.Add(session);
             _displaySessions.Add(session);
-            var vm = new SessionViewModel(session);
+            var vm = MakeSessionVm(session);
             _sessionVms[session] = vm;
         }
 
@@ -674,6 +675,43 @@ public partial class MainWindow : Window
             : "0";
     }
 
+    private SessionViewModel MakeSessionVm(TreadmillSession session)
+    {
+        var vm = new SessionViewModel(session);
+        vm.DeleteCommand = new RelayCommand(
+            () => DeleteSession(session),
+            () => !session.IsActive);
+        return vm;
+    }
+
+    private void DeleteSession(TreadmillSession session)
+    {
+        if (session.IsActive) return;
+
+        var stravaNote = _sessionVms.TryGetValue(session, out var vm2) ? "" : "";
+        var uploaded   = _appData.LoadSessions()
+                                 .FirstOrDefault(r => r.StartTime == session.StartTime)
+                                 ?.IsUploaded ?? false;
+        var body = $"Delete the walk from {session.StartTime:HH:mm} " +
+                   $"({session.DistanceMeters} m · {session.Steps} steps)?";
+        if (uploaded)
+            body += "\n\nThis walk was uploaded to Strava — it will not be removed there automatically.";
+
+        var result = System.Windows.MessageBox.Show(
+            body, "Delete Walk",
+            System.Windows.MessageBoxButton.OKCancel,
+            System.Windows.MessageBoxImage.Question);
+        if (result != System.Windows.MessageBoxResult.OK) return;
+
+        _appData.DeleteSession(session.StartTime);
+        _displaySessions.Remove(session);
+        _todaySessions.Remove(session);
+        _sessionVms.Remove(session);
+        UpdateDailyTotals();
+        RebuildSessionList();
+        AppendLog($"Walk from {session.StartTime:HH:mm} deleted.");
+    }
+
     private void RebuildSessionList()
     {
         _sessions.Clear();
@@ -794,7 +832,8 @@ public sealed class SessionViewModel : INotifyPropertyChanged
     public string StepsDisplay    => _s.Steps > 0 ? _s.Steps.ToString() : "--";
     public string DistanceDisplay => _s.DistanceMeters > 0 ? $"{_s.DistanceMeters} m" : "--";
     public string StatusDisplay   => _s.IsActive ? "● Active" : "✓ Done";
-    public bool   IsActive        => _s.IsActive;
+    public bool     IsActive      => _s.IsActive;
+    public ICommand? DeleteCommand { get; set; }
 
     public void Refresh() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -809,4 +848,22 @@ public sealed class DateSeparatorItem
         else if (date.Date == DateTime.Today.AddDays(-1)) Label = "Yesterday";
         else                                              Label = date.ToString("dddd, MMMM d");
     }
+}
+
+public sealed class RelayCommand : ICommand
+{
+    private readonly Action      _execute;
+    private readonly Func<bool>? _canExecute;
+
+    public RelayCommand(Action execute, Func<bool>? canExecute = null)
+    {
+        _execute    = execute;
+        _canExecute = canExecute;
+    }
+
+    public bool CanExecute(object? parameter) => _canExecute?.Invoke() ?? true;
+    public void Execute(object? parameter)    => _execute();
+#pragma warning disable CS0067   // CanExecuteChanged is required by ICommand but not raised here
+    public event EventHandler? CanExecuteChanged;
+#pragma warning restore CS0067
 }

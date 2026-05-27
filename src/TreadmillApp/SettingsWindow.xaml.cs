@@ -11,10 +11,11 @@ namespace TreadmillApp;
 
 public partial class SettingsWindow : Window
 {
-    private readonly TreadmillBleManager           _ble;
-    private readonly AppDataService                _appData;
-    private readonly StravaService                 _strava;
+    private readonly TreadmillBleManager             _ble;
+    private readonly AppDataService                  _appData;
+    private readonly StravaService                   _strava;
     private readonly ObservableCollection<BleDevice> _devices = new();
+    private          bool                            _loading;
 
     public SettingsWindow(TreadmillBleManager ble, AppDataService appData, StravaService strava)
     {
@@ -22,7 +23,9 @@ public partial class SettingsWindow : Window
         _appData = appData;
         _strava  = strava;
 
+        _loading = true;
         InitializeComponent();
+        _loading = false;
 
         DeviceList.ItemsSource = _devices;
 
@@ -269,8 +272,10 @@ public partial class SettingsWindow : Window
 
     private void LoadWorkoutState()
     {
+        _loading = true;
         PauseToleranceSlider.Value = _appData.PauseToleranceSeconds;
         UpdatePauseToleranceLabel(_appData.PauseToleranceSeconds);
+        _loading = false;
 
         MinStepsBox.Text   = _appData.MinWalkSteps.ToString();
         MinSecondsBox.Text = _appData.MinWalkSeconds.ToString();
@@ -346,7 +351,8 @@ public partial class SettingsWindow : Window
     {
         var seconds = (int)Math.Round(e.NewValue);
         UpdatePauseToleranceLabel(seconds);
-        _appData.PauseToleranceSeconds = seconds;
+        if (!_loading)
+            _appData.PauseToleranceSeconds = seconds;
     }
 
     private void UpdatePauseToleranceLabel(int seconds)

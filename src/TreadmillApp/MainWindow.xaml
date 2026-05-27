@@ -256,6 +256,12 @@
                         <ItemsControl.Resources>
                             <DataTemplate DataType="{x:Type local:SessionViewModel}">
                                 <Border BorderBrush="#EEEEEE" BorderThickness="0,0,0,1" Padding="4,5">
+                                    <Border.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="Delete walk…"
+                                                      Command="{Binding DeleteCommand}"/>
+                                        </ContextMenu>
+                                    </Border.ContextMenu>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="70"/>
