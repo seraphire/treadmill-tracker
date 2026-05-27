@@ -178,7 +178,8 @@ public class AppDataService
         bool      WindowMaximized         = false,
         bool      AutoConnect             = false,
         int       WalkDistanceMetersGoal  = 0,    // 0 = no per-walk goal
-        int       WalkDurationSecondsGoal = 0);
+        int       WalkDurationSecondsGoal = 0,
+        DateTime? LastGoalSuggestionDate  = null);
 
     private AppFlags LoadFlags()
     {
@@ -400,6 +401,123 @@ public class AppDataService
 
     private static int RoundUp(int value, int step) =>
         Math.Max(step, (int)Math.Ceiling((double)value / step) * step);
+
+    public DateTime? LastGoalSuggestionDate => LoadFlags().LastGoalSuggestionDate;
+
+    public void MarkGoalSuggestionShown(DateTime when)
+    {
+        var f = LoadFlags();
+        SaveFlags(f with { LastGoalSuggestionDate = when.Date });
+    }
+
+    // ── Goal adjustment nudges ────────────────────────────────────────────────
+
+    public enum GoalAdjustmentDirection { Raise, Lower }
+
+    /// <summary>
+    /// Represents a suggestion to raise or lower one or more goals based on
+    /// recent performance. <see cref="ApplyLabel"/> is the human-readable name
+    /// of what will change; the caller passes Apply actions to MainWindow.
+    /// </summary>
+    public record GoalAdjustment(
+        GoalAdjustmentDirection Direction,
+        string                  Description,   // shown in the toast body
+        int                     ConsecutiveDays);
+
+    /// <summary>
+    /// Looks at recent performance and returns up to one raise or lower
+    /// suggestion. Checks daily goals against the last 5 distinct walk-days,
+    /// and per-walk goals against the last 5 individual sessions.
+    /// Returns null when no suggestion is warranted.
+    /// </summary>
+    public (GoalAdjustment Adj, int NewDailyDist, int NewDailySteps,
+                                int NewWalkDist,  int NewWalkDur)?
+        CheckGoalAdjustment()
+    {
+        const int streak  = 5;
+        const double beat = 1.10;   // must exceed goal by this factor to count as "beat"
+        const double miss = 0.90;   // must be below this factor to count as "missed"
+
+        var sessions  = LoadSessions();
+        var dailyDist = DailyDistanceMetersGoal;
+        var dailyStp  = DailyStepsGoal;
+        var walkDist  = WalkDistanceMetersGoal;
+        var walkDur   = WalkDurationSecondsGoal;
+
+        // ── Daily goals: aggregate by day ────────────────────────────────────
+        var last5Days = sessions
+            .GroupBy(s => s.StartTime.Date)
+            .OrderByDescending(g => g.Key)
+            .Take(streak)
+            .ToList();
+
+        if (last5Days.Count < streak) return null;  // not enough days yet
+
+        double[] dayDist  = last5Days.Select(g => (double)g.Sum(s => s.DistanceMeters)).ToArray();
+        double[] daySteps = last5Days.Select(g => (double)g.Sum(s => s.Steps)).ToArray();
+
+        // ── Per-walk goals: individual sessions ──────────────────────────────
+        var last5Walks = sessions
+            .OrderByDescending(s => s.StartTime)
+            .Take(streak)
+            .ToList();
+
+        double[] wDist = last5Walks.Select(s => (double)s.DistanceMeters).ToArray();
+        double[] wDur  = last5Walks.Select(s => s.Duration.TotalSeconds).ToArray();
+
+        // Check raise conditions (all five beat their goal by the margin)
+        bool raiseDailyDist  = dailyDist > 0 && dayDist .All(v => v >= dailyDist  * beat);
+        bool raiseDailyStp   = dailyStp  > 0 && daySteps.All(v => v >= dailyStp   * beat);
+        bool raiseWalkDist   = walkDist  > 0 && wDist   .All(v => v >= walkDist   * beat);
+        bool raiseWalkDur    = walkDur   > 0 && wDur    .All(v => v >= walkDur    * beat);
+
+        // Check lower conditions (all five fell short of their goal by the margin)
+        bool lowerDailyDist  = dailyDist > 0 && dayDist .All(v => v <  dailyDist  * miss);
+        bool lowerDailyStp   = dailyStp  > 0 && daySteps.All(v => v <  dailyStp   * miss);
+        bool lowerWalkDist   = walkDist  > 0 && wDist   .All(v => v <  walkDist   * miss);
+        bool lowerWalkDur    = walkDur   > 0 && wDur    .All(v => v <  walkDur    * miss);
+
+        bool anyRaise = raiseDailyDist || raiseDailyStp || raiseWalkDist || raiseWalkDur;
+        bool anyLower = lowerDailyDist || lowerDailyStp || lowerWalkDist || lowerWalkDur;
+        if (!anyRaise && !anyLower) return null;
+
+        // Prefer raise over lower (more motivating); pick only one direction.
+        var dir = anyRaise ? GoalAdjustmentDirection.Raise : GoalAdjustmentDirection.Lower;
+        double factor = dir == GoalAdjustmentDirection.Raise ? 1.10 : 1.0;
+        int    distStep  = 500;  int durStep = 300;  int stpStep = 500;
+
+        // New daily distance
+        int newDailyDist = dailyDist;
+        if (dir == GoalAdjustmentDirection.Raise ? raiseDailyDist : lowerDailyDist)
+            newDailyDist = RoundUp((int)(dayDist.Average() * factor), distStep);
+
+        // New daily steps
+        int newDailySteps = dailyStp;
+        if (dir == GoalAdjustmentDirection.Raise ? raiseDailyStp : lowerDailyStp)
+            newDailySteps = RoundUp((int)(daySteps.Average() * factor), stpStep);
+
+        // New walk distance
+        int newWalkDist = walkDist;
+        if (dir == GoalAdjustmentDirection.Raise ? raiseWalkDist : lowerWalkDist)
+            newWalkDist = RoundUp((int)(wDist.Average() * factor), 250);
+
+        // New walk duration
+        int newWalkDur = walkDur;
+        if (dir == GoalAdjustmentDirection.Raise ? raiseWalkDur : lowerWalkDur)
+            newWalkDur = RoundUp((int)(wDur.Average() * factor), durStep);
+
+        // Build a readable description of what changed
+        var parts = new List<string>();
+        if (newDailyDist  != dailyDist && dailyDist  > 0) parts.Add($"daily distance → {newDailyDist  / 1000.0:0.#} km");
+        if (newDailySteps != dailyStp  && dailyStp   > 0) parts.Add($"daily steps → {newDailySteps}");
+        if (newWalkDist   != walkDist  && walkDist   > 0) parts.Add($"walk distance → {newWalkDist   / 1000.0:0.#} km");
+        if (newWalkDur    != walkDur   && walkDur    > 0) parts.Add($"walk time → {newWalkDur / 60} min");
+
+        if (parts.Count == 0) return null;
+
+        var adj = new GoalAdjustment(dir, string.Join(" · ", parts), streak);
+        return (adj, newDailyDist, newDailySteps, newWalkDist, newWalkDur);
+    }
 
     // ── Start with Windows (registry) ─────────────────────────────────────────
 

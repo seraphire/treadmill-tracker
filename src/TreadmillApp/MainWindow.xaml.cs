@@ -144,6 +144,7 @@ public partial class MainWindow : Window
                 RebuildSessionList();
                 CheckGoalHit();
                 _appData.AppendSession(session);
+                MaybeSuggestGoalAdjustment();
                 AppendLog($"Walk complete — {session.DistanceMeters} m · {session.Steps} steps · " +
                           $"{session.Calories} kcal · {FormatDuration(session.Duration)}");
 
@@ -251,6 +252,7 @@ public partial class MainWindow : Window
         LoadSavedDevice();
         LoadTodaySessions();
         MaybeShowGhostNag();
+        MaybeSuggestInitialGoals();
         _ = RetryUnuploadedSessionsAsync();
         if (_appData.AutoConnect && _savedDevice != null)
             _ = _ble.ConnectAsync(BuildBleDeviceFromSaved(_savedDevice));
@@ -803,6 +805,80 @@ public partial class MainWindow : Window
     /// goal in a calendar day. Uses winning.png. No-op if neither goal is set
     /// or the goal-hit toast has already shown today.
     /// </summary>
+    /// <summary>
+    /// On startup: if no daily goals are set but there's enough history,
+    /// show a one-per-day toast offering to set suggested goals automatically.
+    /// </summary>
+    private void MaybeSuggestInitialGoals()
+    {
+        // Only when no daily goals are configured
+        if (_appData.DailyDistanceMetersGoal > 0 || _appData.DailyStepsGoal > 0) return;
+        if (_appData.LastGoalSuggestionDate?.Date == DateTime.Today) return;
+
+        var s = _appData.SuggestGoals();
+        if (s == null) return;   // fewer than 5 walks — not enough data yet
+
+        _appData.MarkGoalSuggestionShown(DateTime.Today);
+        ShowToast("Set some goals?",
+                  $"Based on {s.WalkCount} walks: " +
+                  $"{s.DailyDistanceMeters / 1000.0:0.#} km/day · {s.DailySteps:#,0} steps/day · " +
+                  $"{s.WalkDistanceMeters  / 1000.0:0.#} km/walk · {s.WalkDurationSeconds / 60} min/walk. " +
+                  $"Tap to apply.",
+                  displayMs: 14000,
+                  style: ToastStyle.Setup,
+                  onClick: () =>
+                  {
+                      _appData.DailyDistanceMetersGoal  = s.DailyDistanceMeters;
+                      _appData.DailyStepsGoal           = s.DailySteps;
+                      _appData.WalkDistanceMetersGoal   = s.WalkDistanceMeters;
+                      _appData.WalkDurationSecondsGoal  = s.WalkDurationSeconds;
+                      UpdateDailyTotals();
+                      AppendLog("Goals set from history suggestion.");
+                      ShowToast("Goals set!",
+                                $"Daily: {s.DailyDistanceMeters / 1000.0:0.#} km · {s.DailySteps:#,0} steps  |  " +
+                                $"Per walk: {s.WalkDistanceMeters / 1000.0:0.#} km · {s.WalkDurationSeconds / 60} min",
+                                displayMs: 7000,
+                                style: ToastStyle.ThumbsUp);
+                  });
+    }
+
+    /// <summary>
+    /// After a walk completes: if any goal has been consistently beaten or
+    /// missed for 5 walk-days in a row, suggest adjusting it. At most once
+    /// per day to avoid nagging.
+    /// </summary>
+    private void MaybeSuggestGoalAdjustment()
+    {
+        if (_appData.LastGoalSuggestionDate?.Date == DateTime.Today) return;
+
+        var result = _appData.CheckGoalAdjustment();
+        if (result == null) return;
+
+        var (adj, newDailyDist, newDailySteps, newWalkDist, newWalkDur) = result.Value;
+        _appData.MarkGoalSuggestionShown(DateTime.Today);
+
+        string intro = adj.Direction == AppDataService.GoalAdjustmentDirection.Raise
+            ? $"You've been crushing your goals for {adj.ConsecutiveDays} days — ready to push harder?"
+            : $"Your goals have been a bit tough lately — want something more achievable?";
+
+        ShowToast(adj.Direction == AppDataService.GoalAdjustmentDirection.Raise
+                      ? "Time to level up!" : "Adjust your goals?",
+                  $"{intro}\n{adj.Description}  ·  Tap to apply.",
+                  displayMs: 14000,
+                  style: adj.Direction == AppDataService.GoalAdjustmentDirection.Raise
+                      ? ToastStyle.Winning : ToastStyle.Setup,
+                  onClick: () =>
+                  {
+                      if (_appData.DailyDistanceMetersGoal > 0) _appData.DailyDistanceMetersGoal  = newDailyDist;
+                      if (_appData.DailyStepsGoal          > 0) _appData.DailyStepsGoal           = newDailySteps;
+                      if (_appData.WalkDistanceMetersGoal  > 0) _appData.WalkDistanceMetersGoal   = newWalkDist;
+                      if (_appData.WalkDurationSecondsGoal > 0) _appData.WalkDurationSecondsGoal  = newWalkDur;
+                      UpdateDailyTotals();
+                      AppendLog($"Goals {(adj.Direction == AppDataService.GoalAdjustmentDirection.Raise ? "raised" : "lowered")} from suggestion.");
+                      ShowToast("Goals updated!", adj.Description, displayMs: 6000, style: ToastStyle.ThumbsUp);
+                  });
+    }
+
     private void CheckGoalHit()
     {
         if (_appData.LastGoalHitDate?.Date == DateTime.Today) return;
