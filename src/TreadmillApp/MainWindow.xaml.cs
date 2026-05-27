@@ -249,6 +249,8 @@ public partial class MainWindow : Window
         LoadTodaySessions();
         MaybeShowGhostNag();
         _ = RetryUnuploadedSessionsAsync();
+        if (_appData.AutoConnect && _savedDevice != null)
+            _ = _ble.ConnectAsync(BuildBleDeviceFromSaved(_savedDevice));
     }
 
     /// <summary>

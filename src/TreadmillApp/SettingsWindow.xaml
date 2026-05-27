@@ -315,6 +315,39 @@
             <TabItem Header="App">
                 <Grid Margin="20">
                     <StackPanel VerticalAlignment="Top">
+
+                        <TextBlock Text="Connection" FontSize="14" FontWeight="SemiBold"
+                                   Margin="0,0,0,8"/>
+                        <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="4"
+                                Padding="14,10" Background="#FAFAFA" Margin="0,0,0,12">
+                            <StackPanel>
+                                <CheckBox x:Name="AutoConnectCheck"
+                                          Content="Auto-connect on startup"
+                                          FontWeight="SemiBold"
+                                          Checked="AutoConnectCheck_Changed"
+                                          Unchecked="AutoConnectCheck_Changed"/>
+                                <TextBlock Foreground="#777" FontSize="11" TextWrapping="Wrap"
+                                           Margin="20,6,0,0"
+                                           Text="Automatically connect to your saved treadmill as soon as the app starts. Requires a saved device (connect once via Find Device first)."/>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="Startup" FontSize="14" FontWeight="SemiBold"
+                                   Margin="0,0,0,8"/>
+                        <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="4"
+                                Padding="14,10" Background="#FAFAFA" Margin="0,0,0,12">
+                            <StackPanel>
+                                <CheckBox x:Name="StartWithWindowsCheck"
+                                          Content="Start with Windows"
+                                          FontWeight="SemiBold"
+                                          Checked="StartWithWindowsCheck_Changed"
+                                          Unchecked="StartWithWindowsCheck_Changed"/>
+                                <TextBlock Foreground="#777" FontSize="11" TextWrapping="Wrap"
+                                           Margin="20,6,0,0"
+                                           Text="Launch Treadmill Tracker automatically when you log in to Windows. Pair with auto-connect so it's ready to record the moment you step on."/>
+                            </StackPanel>
+                        </Border>
+
                         <TextBlock Text="Window Behavior" FontSize="14" FontWeight="SemiBold"
                                    Margin="0,0,0,8"/>
                         <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="4"
@@ -330,6 +363,7 @@
                                            Text="When checked, clicking the minimize button hides the window to the system tray — click the tray icon to restore it. Uncheck to keep the window in the taskbar so you can restore it without accessing the tray (useful if the tray is hidden behind a remote desktop session)."/>
                             </StackPanel>
                         </Border>
+
                     </StackPanel>
                 </Grid>
             </TabItem>

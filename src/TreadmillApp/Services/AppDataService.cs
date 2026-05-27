@@ -175,7 +175,8 @@ public class AppDataService
         double?   WindowTop               = null,
         double?   WindowWidth             = null,
         double?   WindowHeight            = null,
-        bool      WindowMaximized         = false);
+        bool      WindowMaximized         = false,
+        bool      AutoConnect             = false);
 
     private AppFlags LoadFlags()
     {
@@ -319,6 +320,47 @@ public class AppDataService
         SaveFlags(f with { WindowLeft = left, WindowTop = top,
                            WindowWidth = width, WindowHeight = height,
                            WindowMaximized = maximized });
+    }
+
+    public bool AutoConnect
+    {
+        get => LoadFlags().AutoConnect;
+        set
+        {
+            var f = LoadFlags();
+            SaveFlags(f with { AutoConnect = value });
+        }
+    }
+
+    // ── Start with Windows (registry) ─────────────────────────────────────────
+
+    private const string RunKey     = @"Software\Microsoft\Windows\CurrentVersion\Run";
+    private const string RunValue   = "TreadmillTracker";
+
+    public bool StartWithWindows
+    {
+        get
+        {
+            try
+            {
+                using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RunKey, false);
+                return key?.GetValue(RunValue) != null;
+            }
+            catch { return false; }
+        }
+        set
+        {
+            try
+            {
+                using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RunKey, true)!;
+                if (value)
+                    key.SetValue(RunValue,
+                        $"\"{System.Diagnostics.Process.GetCurrentProcess().MainModule!.FileName}\"");
+                else
+                    key.DeleteValue(RunValue, throwOnMissingValue: false);
+            }
+            catch { }
+        }
     }
 
     /// <summary>Classify a session by its average speed using the current thresholds.</summary>

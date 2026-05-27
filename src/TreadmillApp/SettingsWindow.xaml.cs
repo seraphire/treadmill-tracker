@@ -382,7 +382,19 @@ public partial class SettingsWindow : Window
 
     private void LoadAppState()
     {
-        MinimizeToTrayCheck.IsChecked = _appData.MinimizeToTray;
+        AutoConnectCheck.IsChecked       = _appData.AutoConnect;
+        StartWithWindowsCheck.IsChecked  = _appData.StartWithWindows;
+        MinimizeToTrayCheck.IsChecked    = _appData.MinimizeToTray;
+    }
+
+    private void AutoConnectCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        _appData.AutoConnect = AutoConnectCheck.IsChecked == true;
+    }
+
+    private void StartWithWindowsCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        _appData.StartWithWindows = StartWithWindowsCheck.IsChecked == true;
     }
 
     private void MinimizeToTrayCheck_Changed(object sender, RoutedEventArgs e)
