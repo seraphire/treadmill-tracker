@@ -832,6 +832,7 @@ public partial class MainWindow : Window
                       _appData.DailyStepsGoal           = s.DailySteps;
                       _appData.WalkDistanceMetersGoal   = s.WalkDistanceMeters;
                       _appData.WalkDurationSecondsGoal  = s.WalkDurationSeconds;
+                      _appData.MarkGoalsUpdated();
                       UpdateDailyTotals();
                       AppendLog("Goals set from history suggestion.");
                       ShowToast("Goals set!",
@@ -873,6 +874,7 @@ public partial class MainWindow : Window
                       if (_appData.DailyStepsGoal          > 0) _appData.DailyStepsGoal           = newDailySteps;
                       if (_appData.WalkDistanceMetersGoal  > 0) _appData.WalkDistanceMetersGoal   = newWalkDist;
                       if (_appData.WalkDurationSecondsGoal > 0) _appData.WalkDurationSecondsGoal  = newWalkDur;
+                      _appData.MarkGoalsUpdated();
                       UpdateDailyTotals();
                       AppendLog($"Goals {(adj.Direction == AppDataService.GoalAdjustmentDirection.Raise ? "raised" : "lowered")} from suggestion.");
                       ShowToast("Goals updated!", adj.Description, displayMs: 6000, style: ToastStyle.ThumbsUp);

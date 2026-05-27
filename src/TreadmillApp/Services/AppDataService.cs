@@ -179,7 +179,8 @@ public class AppDataService
         bool      AutoConnect             = false,
         int       WalkDistanceMetersGoal  = 0,    // 0 = no per-walk goal
         int       WalkDurationSecondsGoal = 0,
-        DateTime? LastGoalSuggestionDate  = null);
+        DateTime? LastGoalSuggestionDate  = null,
+        DateTime? GoalsLastUpdatedDate    = null); // reset the adjustment clock
 
     private AppFlags LoadFlags()
     {
@@ -410,6 +411,16 @@ public class AppDataService
         SaveFlags(f with { LastGoalSuggestionDate = when.Date });
     }
 
+    /// <summary>
+    /// Call whenever any goal value is changed so the adjustment-nudge clock
+    /// resets and won't fire until 5 new walk-days have accumulated.
+    /// </summary>
+    public void MarkGoalsUpdated()
+    {
+        var f = LoadFlags();
+        SaveFlags(f with { GoalsLastUpdatedDate = DateTime.Today });
+    }
+
     // ── Goal adjustment nudges ────────────────────────────────────────────────
 
     public enum GoalAdjustmentDirection { Raise, Lower }
@@ -438,11 +449,16 @@ public class AppDataService
         const double beat = 1.10;   // must exceed goal by this factor to count as "beat"
         const double miss = 0.90;   // must be below this factor to count as "missed"
 
-        var sessions  = LoadSessions();
-        var dailyDist = DailyDistanceMetersGoal;
-        var dailyStp  = DailyStepsGoal;
-        var walkDist  = WalkDistanceMetersGoal;
-        var walkDur   = WalkDurationSecondsGoal;
+        var allSessions = LoadSessions();
+        var dailyDist   = DailyDistanceMetersGoal;
+        var dailyStp    = DailyStepsGoal;
+        var walkDist    = WalkDistanceMetersGoal;
+        var walkDur     = WalkDurationSecondsGoal;
+
+        // Only count sessions that occurred after the goals were last changed
+        // so updating a goal resets the 5-day clock automatically.
+        var cutoff   = LoadFlags().GoalsLastUpdatedDate ?? DateTime.MinValue;
+        var sessions = allSessions.Where(s => s.StartTime.Date > cutoff).ToList();
 
         // ── Daily goals: aggregate by day ────────────────────────────────────
         var last5Days = sessions
@@ -451,7 +467,7 @@ public class AppDataService
             .Take(streak)
             .ToList();
 
-        if (last5Days.Count < streak) return null;  // not enough days yet
+        if (last5Days.Count < streak) return null;  // not enough days since last goal change
 
         double[] dayDist  = last5Days.Select(g => (double)g.Sum(s => s.DistanceMeters)).ToArray();
         double[] daySteps = last5Days.Select(g => (double)g.Sum(s => s.Steps)).ToArray();

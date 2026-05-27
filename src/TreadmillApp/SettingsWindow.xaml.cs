@@ -243,6 +243,7 @@ public partial class SettingsWindow : Window
                             System.Globalization.CultureInfo.InvariantCulture, out var km) && km >= 0)
         {
             _appData.DailyDistanceMetersGoal = (int)Math.Round(km * 1000);
+            _appData.MarkGoalsUpdated();
             DailyDistanceBox.Text = km.ToString("0.##");
         }
         else
@@ -264,6 +265,7 @@ public partial class SettingsWindow : Window
                          System.Globalization.CultureInfo.InvariantCulture, out var n) && n >= 0)
         {
             _appData.DailyStepsGoal = n;
+            _appData.MarkGoalsUpdated();
             DailyStepsBox.Text = n.ToString();
         }
         else
@@ -280,6 +282,7 @@ public partial class SettingsWindow : Window
                             System.Globalization.CultureInfo.InvariantCulture, out var km) && km >= 0)
         {
             _appData.WalkDistanceMetersGoal = (int)Math.Round(km * 1000);
+            _appData.MarkGoalsUpdated();
             WalkDistanceBox.Text = km.ToString("0.##");
         }
         else { LoadGoalsState(); }
@@ -292,6 +295,7 @@ public partial class SettingsWindow : Window
         if (int.TryParse(txt, out var min) && min >= 0)
         {
             _appData.WalkDurationSecondsGoal = min * 60;
+            _appData.MarkGoalsUpdated();
             WalkDurationBox.Text = min.ToString();
         }
         else { LoadGoalsState(); }
@@ -319,6 +323,7 @@ public partial class SettingsWindow : Window
         _appData.DailyStepsGoal           = s.DailySteps;
         _appData.WalkDistanceMetersGoal   = s.WalkDistanceMeters;
         _appData.WalkDurationSecondsGoal  = s.WalkDurationSeconds;
+        _appData.MarkGoalsUpdated();
 
         SuggestGoalsHint.Text = $"Suggested from {s.WalkCount} walks in the last 30 days " +
                                 $"(~10 % above your median). Adjust any field to override.";
