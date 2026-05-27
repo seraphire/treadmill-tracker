@@ -176,7 +176,9 @@ public class AppDataService
         double?   WindowWidth             = null,
         double?   WindowHeight            = null,
         bool      WindowMaximized         = false,
-        bool      AutoConnect             = false);
+        bool      AutoConnect             = false,
+        int       WalkDistanceMetersGoal  = 0,    // 0 = no per-walk goal
+        int       WalkDurationSecondsGoal = 0);
 
     private AppFlags LoadFlags()
     {
@@ -331,6 +333,73 @@ public class AppDataService
             SaveFlags(f with { AutoConnect = value });
         }
     }
+
+    public int WalkDistanceMetersGoal
+    {
+        get => LoadFlags().WalkDistanceMetersGoal;
+        set
+        {
+            var f = LoadFlags();
+            SaveFlags(f with { WalkDistanceMetersGoal = Math.Max(0, value) });
+        }
+    }
+
+    public int WalkDurationSecondsGoal
+    {
+        get => LoadFlags().WalkDurationSecondsGoal;
+        set
+        {
+            var f = LoadFlags();
+            SaveFlags(f with { WalkDurationSecondsGoal = Math.Max(0, value) });
+        }
+    }
+
+    // ── Goal suggestions ──────────────────────────────────────────────────────
+
+    public record GoalSuggestions(
+        int DailyDistanceMeters,
+        int DailySteps,
+        int WalkDistanceMeters,
+        int WalkDurationSeconds,
+        int WalkCount);
+
+    /// <summary>
+    /// Analyses the last 30 days of walks and returns suggested goals set
+    /// ~10 % above the median, rounded to friendly step sizes. Returns null
+    /// if there are fewer than 5 walks in the window (not enough history).
+    /// </summary>
+    public GoalSuggestions? SuggestGoals()
+    {
+        var cutoff  = DateTime.Today.AddDays(-30);
+        var recent  = LoadSessions().Where(s => s.StartTime >= cutoff).ToList();
+        if (recent.Count < 5) return null;
+
+        // Per-walk medians
+        var walkDist = recent.Select(s => (double)s.DistanceMeters).OrderBy(x => x).ToList();
+        var walkDur  = recent.Select(s => s.Duration.TotalSeconds).OrderBy(x => x).ToList();
+
+        // Daily medians (only days that had at least one walk)
+        var byDay        = recent.GroupBy(s => s.StartTime.Date);
+        var dailyDist    = byDay.Select(g => (double)g.Sum(s => s.DistanceMeters)).OrderBy(x => x).ToList();
+        var dailySteps   = byDay.Select(g => (double)g.Sum(s => s.Steps)).OrderBy(x => x).ToList();
+
+        return new GoalSuggestions(
+            DailyDistanceMeters: RoundUp((int)(Median(dailyDist)  * 1.10), 500),
+            DailySteps:          RoundUp((int)(Median(dailySteps) * 1.10), 500),
+            WalkDistanceMeters:  RoundUp((int)(Median(walkDist)   * 1.10), 250),
+            WalkDurationSeconds: RoundUp((int)(Median(walkDur)    * 1.10), 300),  // 5-min steps
+            WalkCount:           recent.Count);
+    }
+
+    private static double Median(List<double> sorted)
+    {
+        if (sorted.Count == 0) return 0;
+        int mid = sorted.Count / 2;
+        return sorted.Count % 2 == 0 ? (sorted[mid - 1] + sorted[mid]) / 2.0 : sorted[mid];
+    }
+
+    private static int RoundUp(int value, int step) =>
+        Math.Max(step, (int)Math.Ceiling((double)value / step) * step);
 
     // ── Start with Windows (registry) ─────────────────────────────────────────
 

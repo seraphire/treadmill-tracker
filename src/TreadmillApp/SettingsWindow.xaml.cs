@@ -223,6 +223,12 @@ public partial class SettingsWindow : Window
 
         var steps = _appData.DailyStepsGoal;
         DailyStepsBox.Text = steps > 0 ? steps.ToString() : "";
+
+        var walkDistM = _appData.WalkDistanceMetersGoal;
+        WalkDistanceBox.Text = walkDistM > 0 ? (walkDistM / 1000.0).ToString("0.##") : "";
+
+        var walkDurS = _appData.WalkDurationSecondsGoal;
+        WalkDurationBox.Text = walkDurS > 0 ? ((int)Math.Round(walkDurS / 60.0)).ToString() : "";
     }
 
     private void DailyDistanceBox_LostFocus(object sender, RoutedEventArgs e)
@@ -264,6 +270,60 @@ public partial class SettingsWindow : Window
         {
             LoadGoalsState();
         }
+    }
+
+    private void WalkDistanceBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        var txt = WalkDistanceBox.Text?.Trim() ?? "";
+        if (string.IsNullOrEmpty(txt)) { _appData.WalkDistanceMetersGoal = 0; return; }
+        if (double.TryParse(txt, System.Globalization.NumberStyles.Any,
+                            System.Globalization.CultureInfo.InvariantCulture, out var km) && km >= 0)
+        {
+            _appData.WalkDistanceMetersGoal = (int)Math.Round(km * 1000);
+            WalkDistanceBox.Text = km.ToString("0.##");
+        }
+        else { LoadGoalsState(); }
+    }
+
+    private void WalkDurationBox_LostFocus(object sender, RoutedEventArgs e)
+    {
+        var txt = WalkDurationBox.Text?.Trim() ?? "";
+        if (string.IsNullOrEmpty(txt)) { _appData.WalkDurationSecondsGoal = 0; return; }
+        if (int.TryParse(txt, out var min) && min >= 0)
+        {
+            _appData.WalkDurationSecondsGoal = min * 60;
+            WalkDurationBox.Text = min.ToString();
+        }
+        else { LoadGoalsState(); }
+    }
+
+    private void SuggestGoals_Click(object sender, RoutedEventArgs e)
+    {
+        var s = _appData.SuggestGoals();
+        if (s == null)
+        {
+            SuggestGoalsHint.Text       = "Not enough history yet — need at least 5 walks. Keep going!";
+            SuggestGoalsHint.Foreground = System.Windows.Media.Brushes.DarkOrange;
+            SuggestGoalsHint.Visibility = System.Windows.Visibility.Visible;
+            return;
+        }
+
+        // Fill all four fields (LostFocus handlers will persist on tab-away)
+        DailyDistanceBox.Text = (s.DailyDistanceMeters / 1000.0).ToString("0.##");
+        DailyStepsBox.Text    = s.DailySteps.ToString();
+        WalkDistanceBox.Text  = (s.WalkDistanceMeters  / 1000.0).ToString("0.##");
+        WalkDurationBox.Text  = ((int)Math.Round(s.WalkDurationSeconds / 60.0)).ToString();
+
+        // Save immediately so they take effect even without tabbing away
+        _appData.DailyDistanceMetersGoal  = s.DailyDistanceMeters;
+        _appData.DailyStepsGoal           = s.DailySteps;
+        _appData.WalkDistanceMetersGoal   = s.WalkDistanceMeters;
+        _appData.WalkDurationSecondsGoal  = s.WalkDurationSeconds;
+
+        SuggestGoalsHint.Text = $"Suggested from {s.WalkCount} walks in the last 30 days " +
+                                $"(~10 % above your median). Adjust any field to override.";
+        SuggestGoalsHint.Foreground = System.Windows.Media.Brushes.DimGray;
+        SuggestGoalsHint.Visibility = System.Windows.Visibility.Visible;
     }
 
     // =========================================================================

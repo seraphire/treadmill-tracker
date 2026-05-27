@@ -31,7 +31,8 @@ public partial class MainWindow : Window
     private SavedDevice?      _savedDevice;
     private TrayIconService?  _tray;
     private PauseToastWindow? _pauseToast;
-    private string            _connectedDeviceName = "";
+    private string            _connectedDeviceName    = "";
+    private bool              _walkGoalToasted        = false;
 
     public MainWindow()
     {
@@ -59,6 +60,7 @@ public partial class MainWindow : Window
                 _displaySessions.Add(session);
                 _activeSessionVm = MakeSessionVm(session);
                 _sessionVms[session] = _activeSessionVm;
+                _walkGoalToasted = false;
                 RebuildSessionList();
                 AppendLog($"Walk started at {session.StartTime:HH:mm:ss}");
 
@@ -72,6 +74,7 @@ public partial class MainWindow : Window
             {
                 _activeSessionVm?.Refresh();
                 UpdateDailyTotals();
+                CheckWalkGoalHit(session);
                 // Keep tray tooltip current
                 _tray?.SetWalking($"{session.DistanceMeters} m · {session.Steps} steps");
             });
@@ -629,14 +632,78 @@ public partial class MainWindow : Window
 
     private void UpdateMetrics(TreadmillMetrics metrics)
     {
-        SpeedValue.Text    = metrics.CurrentSpeed.HasValue   ? $"{metrics.CurrentSpeed.Value:F1}"  : "--";
-        DistanceValue.Text = metrics.TotalDistance.HasValue  ? $"{metrics.TotalDistance.Value}"    : "--";
-        StepsValue.Text    = metrics.StepCount.HasValue      ? $"{metrics.StepCount.Value}"        : "--";
-        CaloriesValue.Text = metrics.ExpendedEnergy.HasValue ? $"{metrics.ExpendedEnergy.Value}"   : "--";
-        ElapsedValue.Text  = metrics.ElapsedSeconds.HasValue
-            ? FormatDuration(TimeSpan.FromSeconds(metrics.ElapsedSeconds.Value))
-            : "--";
+        SpeedValue.Text    = metrics.CurrentSpeed.HasValue   ? $"{metrics.CurrentSpeed.Value:F1}" : "--";
+        StepsValue.Text    = metrics.StepCount.HasValue      ? $"{metrics.StepCount.Value}"       : "--";
+        CaloriesValue.Text = metrics.ExpendedEnergy.HasValue ? $"{metrics.ExpendedEnergy.Value}"  : "--";
         StepsLabel.Text    = "STEPS";
+
+        // Distance — show as "X.XX / goal km" when a per-walk goal is set, otherwise raw meters
+        var distGoal = _appData.WalkDistanceMetersGoal;
+        if (metrics.TotalDistance.HasValue)
+        {
+            if (distGoal > 0)
+            {
+                DistanceValue.Text = $"{metrics.TotalDistance.Value / 1000.0:F2}";
+                DistanceUnit.Text  = $"/ {distGoal / 1000.0:0.##} km";
+            }
+            else
+            {
+                DistanceValue.Text = $"{metrics.TotalDistance.Value}";
+                DistanceUnit.Text  = "meters";
+            }
+        }
+        else
+        {
+            DistanceValue.Text = "--";
+            DistanceUnit.Text  = distGoal > 0 ? $"/ {distGoal / 1000.0:0.##} km" : "meters";
+        }
+
+        // Elapsed — show as "mm:ss / goal" when a per-walk duration goal is set
+        var durGoal = _appData.WalkDurationSecondsGoal;
+        if (metrics.ElapsedSeconds.HasValue)
+        {
+            ElapsedValue.Text = FormatDuration(TimeSpan.FromSeconds(metrics.ElapsedSeconds.Value));
+            ElapsedUnit.Text  = durGoal > 0
+                ? $"/ {FormatDuration(TimeSpan.FromSeconds(durGoal))}"
+                : "time";
+        }
+        else
+        {
+            ElapsedValue.Text = "--";
+            ElapsedUnit.Text  = durGoal > 0
+                ? $"/ {FormatDuration(TimeSpan.FromSeconds(durGoal))}"
+                : "time";
+        }
+    }
+
+    /// <summary>
+    /// Fires a one-per-walk "Walk goal reached!" toast the first time the
+    /// active session crosses either per-walk goal threshold.
+    /// </summary>
+    private void CheckWalkGoalHit(TreadmillSession session)
+    {
+        if (_walkGoalToasted) return;
+
+        var distGoal = _appData.WalkDistanceMetersGoal;
+        var durGoal  = _appData.WalkDurationSecondsGoal;
+        if (distGoal <= 0 && durGoal <= 0) return;
+
+        bool distHit = distGoal > 0 && session.DistanceMeters >= distGoal;
+        bool durHit  = durGoal  > 0 && session.Duration.TotalSeconds >= durGoal;
+        if (!distHit && !durHit) return;
+
+        _walkGoalToasted = true;
+
+        string what = (distHit, durHit) switch
+        {
+            (true, true)  => $"{session.DistanceMeters / 1000.0:F2} km · {FormatDuration(session.Duration)}",
+            (true, false) => $"{session.DistanceMeters / 1000.0:F2} km",
+            _             => FormatDuration(session.Duration),
+        };
+        ShowToast(ToastMessages.GoalHitTitle(),
+                  $"Walk goal hit — {what}. Keep it up!",
+                  displayMs: 7000,
+                  style: ToastStyle.Winning);
     }
 
     private void UpdateDailyTotals()

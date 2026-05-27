@@ -191,13 +191,25 @@
                            RenderOptions.BitmapScalingMode="HighQuality"/>
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Top" Margin="10,0,0,0">
-                        <TextBlock Text="Daily Goals" FontSize="14" FontWeight="SemiBold"
-                                   Margin="0,0,0,8"/>
-                        <TextBlock Foreground="#666" TextWrapping="Wrap"
-                                   Text="Set daily targets for distance and steps. We'll show your progress in the totals bar and pop a celebration toast the first time you cross either goal each day. Leave a field blank to disable that goal."/>
 
+                        <!-- Suggest button -->
+                        <Grid Margin="0,0,0,10">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="Goals" FontSize="14" FontWeight="SemiBold"/>
+                            </StackPanel>
+                            <Button x:Name="SuggestGoalsButton"
+                                    Content="Suggest from my history"
+                                    HorizontalAlignment="Right" Padding="10,4"
+                                    Click="SuggestGoals_Click"/>
+                        </Grid>
+                        <TextBlock x:Name="SuggestGoalsHint" Foreground="#666" FontSize="11"
+                                   TextWrapping="Wrap" Margin="0,0,0,6" Visibility="Collapsed"/>
+
+                        <!-- Daily goals -->
+                        <TextBlock Text="Daily" FontWeight="SemiBold" Foreground="#555"
+                                   Margin="0,0,0,4"/>
                         <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="4"
-                                Padding="14,12" Margin="0,14,0,0" Background="#FAFAFA">
+                                Padding="14,12" Margin="0,0,0,12" Background="#FAFAFA">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="120"/>
@@ -231,6 +243,49 @@
                                            Foreground="#666"/>
                             </Grid>
                         </Border>
+
+                        <!-- Per-walk goals -->
+                        <TextBlock Text="Per walk" FontWeight="SemiBold" Foreground="#555"
+                                   Margin="0,0,0,4"/>
+                        <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="4"
+                                Padding="14,12" Background="#FAFAFA">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="8"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Walk distance:"
+                                           VerticalAlignment="Center"/>
+                                <TextBox Grid.Row="0" Grid.Column="1"
+                                         x:Name="WalkDistanceBox"
+                                         Padding="4,3"
+                                         LostFocus="WalkDistanceBox_LostFocus"/>
+                                <TextBlock Grid.Row="0" Grid.Column="2" Text=" km"
+                                           VerticalAlignment="Center" Margin="6,0,0,0"
+                                           Foreground="#666"/>
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Walk duration:"
+                                           VerticalAlignment="Center"/>
+                                <TextBox Grid.Row="2" Grid.Column="1"
+                                         x:Name="WalkDurationBox"
+                                         Padding="4,3"
+                                         LostFocus="WalkDurationBox_LostFocus"/>
+                                <TextBlock Grid.Row="2" Grid.Column="2" Text=" min"
+                                           VerticalAlignment="Center" Margin="6,0,0,0"
+                                           Foreground="#666"/>
+                            </Grid>
+                        </Border>
+
+                        <TextBlock Foreground="#888" FontSize="11" TextWrapping="Wrap"
+                                   Margin="0,8,0,0"
+                                   Text="Leave any field blank to disable that goal. Per-walk goals show live progress during a walk and pop a toast when you hit them."/>
                     </StackPanel>
                 </Grid>
             </TabItem>
