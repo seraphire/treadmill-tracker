@@ -366,6 +366,85 @@
                 </Grid>
             </TabItem>
 
+            <!-- Google Health tab -->
+            <TabItem Header="Google Health">
+                <Grid Margin="20">
+                    <StackPanel VerticalAlignment="Top">
+                        <TextBlock Text="Google Health Integration" FontSize="14"
+                                   FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBlock Foreground="#666666" TextWrapping="Wrap"
+                                   Text="Authorize Treadmill Tracker to push completed walks to Google Health as exercise entries. The Conqueror can pick these up via a connected Google Fit-compatible source."/>
+
+                        <!-- Credentials -->
+                        <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="4"
+                                Padding="14,10" Margin="0,14,0,0" Background="#FAFAFA">
+                            <StackPanel>
+                                <TextBlock Text="OAuth Client Credentials"
+                                           FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                <TextBlock Foreground="#777777" FontSize="11" TextWrapping="Wrap"
+                                           Margin="0,0,0,8"
+                                           Text="From a Desktop app OAuth 2.0 Client ID in Google Cloud Console. Stored encrypted via Windows Credential Manager."/>
+
+                                <Grid Margin="0,2,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="100"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="6"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Client ID:"
+                                               VerticalAlignment="Center"/>
+                                    <TextBox Grid.Row="0" Grid.Column="1" x:Name="GoogleHealthClientIdBox"
+                                             Padding="4,3"/>
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Client Secret:"
+                                               VerticalAlignment="Center"/>
+                                    <PasswordBox Grid.Row="2" Grid.Column="1" x:Name="GoogleHealthClientSecretBox"
+                                                 Padding="4,3"/>
+                                </Grid>
+
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                            Margin="0,10,0,0">
+                                    <Button x:Name="ForgetGoogleHealthCredentialsButton"
+                                            Content="Forget Credentials" MinWidth="140"
+                                            Margin="0,0,8,0" IsEnabled="False"
+                                            Click="ForgetGoogleHealthCredentials_Click"/>
+                                    <Button x:Name="SaveGoogleHealthCredentialsButton"
+                                            Content="Save Credentials" MinWidth="140"
+                                            Click="SaveGoogleHealthCredentials_Click"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Connection status -->
+                        <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="4"
+                                Padding="14,10" Margin="0,12,0,0" Background="#FAFAFA">
+                            <StackPanel>
+                                <TextBlock Text="Connection" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                <TextBlock x:Name="GoogleHealthStatusText" Foreground="#666666"
+                                           Text="Not connected." Margin="0,0,0,10"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button x:Name="ConnectGoogleHealthButton"
+                                            Content="Connect to Google Health..." MinWidth="180"
+                                            Margin="0,0,8,0" IsEnabled="False"
+                                            Click="ConnectGoogleHealth_Click"/>
+                                    <Button x:Name="DisconnectGoogleHealthButton"
+                                            Content="Disconnect" MinWidth="100"
+                                            IsEnabled="False" Click="DisconnectGoogleHealth_Click"/>
+                                </StackPanel>
+                                <TextBlock Foreground="#888" FontSize="11" TextWrapping="Wrap"
+                                           Margin="0,10,0,0"
+                                           Text="This app runs in Google's unverified &quot;Testing&quot; mode, so access expires roughly every 7 days. When that happens, a browser window will reopen automatically to reconnect."/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
             <!-- App tab -->
             <TabItem Header="App">
                 <Grid Margin="20">

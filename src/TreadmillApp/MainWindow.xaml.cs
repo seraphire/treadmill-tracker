@@ -10,14 +10,16 @@ using WpfColor = System.Windows.Media.Color;
 using TreadmillApp.Models;
 using TreadmillApp.Services;
 using TreadmillApp.Services.Strava;
+using TreadmillApp.Services.GoogleHealth;
 
 namespace TreadmillApp;
 
 public partial class MainWindow : Window
 {
-    private readonly TreadmillBleManager                    _ble      = new();
-    private readonly AppDataService                         _appData  = new();
-    private readonly StravaService                          _strava   = new();
+    private readonly TreadmillBleManager                    _ble          = new();
+    private readonly AppDataService                         _appData      = new();
+    private readonly StravaService                          _strava       = new();
+    private readonly GoogleHealthService                    _googleHealth = new();
     private readonly ObservableCollection<object>           _sessions        = new();
     private readonly List<TreadmillSession>                 _todaySessions   = new();
     private readonly List<TreadmillSession>                 _displaySessions = new();
@@ -41,6 +43,9 @@ public partial class MainWindow : Window
 
         // ── Strava log ────────────────────────────────────────────────────────
         _strava.Log += (_, msg) => Dispatcher.Invoke(() => AppendLog(msg));
+
+        // ── Google Health log ────────────────────────────────────────────────
+        _googleHealth.Log += (_, msg) => Dispatcher.Invoke(() => AppendLog(msg));
 
         // ── BLE events ────────────────────────────────────────────────────────
         // DeviceDiscovered is now consumed by SettingsWindow while it's open.
@@ -179,7 +184,10 @@ public partial class MainWindow : Window
 
             // Discarded walks are never uploaded; sleep-closed walks defer.
             if (keep && !sleepClosing)
+            {
                 _ = HandleStravaForSessionAsync(session);
+                _ = HandleGoogleHealthForSessionAsync(session);
+            }
         };
     }
 
@@ -234,6 +242,58 @@ public partial class MainWindow : Window
         }
     }
 
+    private async Task HandleGoogleHealthForSessionAsync(TreadmillSession session)
+    {
+        if (_googleHealth.IsConnected)
+        {
+            var record = SessionRecord.FromSession(session);
+            var type   = _appData.ClassifyWalk(session.AverageSpeedKmh);
+            var result = await _googleHealth.UploadAsync(record, type);
+            if (result.Success && result.DataPointId != null)
+            {
+                _appData.MarkUploadedGoogleHealth(record.StartTime, result.DataPointId);
+            }
+            else if (result.Permanent)
+            {
+                _appData.MarkGoogleHealthUploadSkipped(record.StartTime);
+            }
+            else if (!_googleHealth.IsConnected)
+            {
+                // Auto-reauth ran (browser reopened) and either succeeded — in
+                // which case the connection is back and next launch's retry
+                // sweep will catch this walk — or the user didn't complete it
+                // within the 5-minute window and we're disconnected again.
+                Dispatcher.Invoke(() =>
+                    ShowToast("Google Health Disconnected",
+                              "Reconnect needed — click here to open settings.",
+                              displayMs: 8000,
+                              style: ToastStyle.LostConnection,
+                              onClick: OpenSettings));
+            }
+            else
+            {
+                // Transient (network/5xx) — surface it so the user knows.
+                Dispatcher.Invoke(() =>
+                    ShowToast("Couldn't Upload to Google Health",
+                              "Walk saved locally — we'll try again at the next launch.",
+                              displayMs: 6000,
+                              style: ToastStyle.LostConnection));
+            }
+        }
+        else if (!_appData.HasShownGoogleHealthPrompt)
+        {
+            _appData.MarkGoogleHealthPromptShown();
+            Dispatcher.Invoke(() =>
+            {
+                ShowToast("Connect to Google Health?",
+                          "Click here to link your account so future walks (and this one) push automatically.",
+                          displayMs: 12000,
+                          style: ToastStyle.Setup,
+                          onClick: OpenSettings);
+            });
+        }
+    }
+
     // =========================================================================
     // Window lifetime — minimize and close go to tray
     // =========================================================================
@@ -254,6 +314,7 @@ public partial class MainWindow : Window
         MaybeShowGhostNag();
         MaybeSuggestInitialGoals();
         _ = RetryUnuploadedSessionsAsync();
+        _ = RetryUnuploadedGoogleHealthSessionsAsync();
         if (_appData.AutoConnect && _savedDevice != null)
             _ = _ble.ConnectAsync(BuildBleDeviceFromSaved(_savedDevice));
     }
@@ -341,6 +402,47 @@ public partial class MainWindow : Window
         }
     }
 
+    private async Task RetryUnuploadedGoogleHealthSessionsAsync()
+    {
+        if (!_googleHealth.IsConnected) return;
+        var pending = _appData.LoadUnuploadedGoogleHealthSessions();
+        if (pending.Count == 0) return;
+
+        AppendLog($"Retrying {pending.Count} session(s) not yet uploaded to Google Health...");
+        int succeeded = 0;
+        foreach (var s in pending)
+        {
+            var type   = _appData.ClassifyWalk(s.AverageSpeedKmh);
+            var result = await _googleHealth.UploadAsync(s, type);
+            if (result.Success && result.DataPointId != null)
+            {
+                _appData.MarkUploadedGoogleHealth(s.StartTime, result.DataPointId);
+                succeeded++;
+            }
+            else if (result.Permanent)
+            {
+                _appData.MarkGoogleHealthUploadSkipped(s.StartTime);
+            }
+            else
+            {
+                // Transient failure (network, 5xx, or a re-auth attempt that
+                // didn't complete) — stop the sweep so we don't hammer the
+                // API or spawn more than one reconnect browser tab. Will
+                // retry at next startup.
+                break;
+            }
+        }
+
+        if (succeeded > 0)
+        {
+            string title = succeeded == 1 ? ToastMessages.UploadedTitle() : $"{succeeded} Walks Uploaded";
+            string msg   = succeeded == 1
+                ? "Your previous walk was just pushed to Google Health."
+                : $"Caught up — {succeeded} pending walks just made it to Google Health.";
+            Dispatcher.Invoke(() => ShowToast(title, msg, displayMs: 6000, style: ToastStyle.Uploaded));
+        }
+    }
+
     private void ShowUploadedToast(string? activityUrl)
     {
         ShowToast(ToastMessages.UploadedTitle(),
@@ -423,6 +525,7 @@ public partial class MainWindow : Window
         _tray?.Dispose();
         _ble.Dispose();
         _strava.Dispose();
+        _googleHealth.Dispose();
         System.Windows.Application.Current.Shutdown();
     }
 
@@ -446,14 +549,15 @@ public partial class MainWindow : Window
 
     private void OpenSettings()
     {
-        var settings = new SettingsWindow(_ble, _appData, _strava) { Owner = this };
+        var settings = new SettingsWindow(_ble, _appData, _strava, _googleHealth) { Owner = this };
         settings.ShowDialog();
         // Reload saved-device state in case the user forgot or replaced it.
         LoadSavedDevice();
         ApplyConnectionState(_ble.State);
         ApplyPauseTolerance();
-        // If they just connected to Strava, sweep any pending uploads.
+        // If they just connected to Strava or Google Health, sweep any pending uploads.
         _ = RetryUnuploadedSessionsAsync();
+        _ = RetryUnuploadedGoogleHealthSessionsAsync();
     }
 
     private void ViewLog_Click(object sender, RoutedEventArgs e)

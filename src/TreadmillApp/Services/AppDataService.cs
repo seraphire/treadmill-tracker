@@ -29,10 +29,12 @@ public record SessionRecord(
 {
     public long?   StravaActivityId  { get; set; }
     public string? StravaActivityUrl { get; set; }
+    public string? GoogleHealthDataPointId { get; set; }
 
     [JsonIgnore] public double   DistanceKm => DistanceMeters / 1000.0;
     [JsonIgnore] public TimeSpan Duration   => EndTime - StartTime;
     [JsonIgnore] public bool     IsUploaded => StravaActivityId.HasValue;
+    [JsonIgnore] public bool     IsUploadedToGoogleHealth => GoogleHealthDataPointId != null;
 
     public static SessionRecord FromSession(TreadmillSession s) => new(
         s.StartTime, s.EndTime!.Value,
@@ -127,6 +129,42 @@ public class AppDataService
     public List<SessionRecord> LoadUnuploadedSessions()
         => LoadSessions().Where(s => !s.IsUploaded).ToList();
 
+    /// <summary>
+    /// Marks the session whose StartTime matches as uploaded to Google Health.
+    /// </summary>
+    public void MarkUploadedGoogleHealth(DateTime startTime, string dataPointId)
+    {
+        try
+        {
+            var all = LoadSessions();
+            var match = all.FirstOrDefault(s => s.StartTime == startTime);
+            if (match == null) return;
+            match.GoogleHealthDataPointId = dataPointId;
+            File.WriteAllText(SessionsPath, JsonSerializer.Serialize(all, JsonOpts));
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// Marks the session as "do not retry uploading to Google Health".
+    /// Stored as GoogleHealthDataPointId = "skipped" (a sentinel).
+    /// </summary>
+    public void MarkGoogleHealthUploadSkipped(DateTime startTime)
+    {
+        try
+        {
+            var all = LoadSessions();
+            var match = all.FirstOrDefault(s => s.StartTime == startTime);
+            if (match == null) return;
+            match.GoogleHealthDataPointId = "skipped";
+            File.WriteAllText(SessionsPath, JsonSerializer.Serialize(all, JsonOpts));
+        }
+        catch { }
+    }
+
+    public List<SessionRecord> LoadUnuploadedGoogleHealthSessions()
+        => LoadSessions().Where(s => !s.IsUploadedToGoogleHealth).ToList();
+
     public void DeleteSession(DateTime startTime)
     {
         try
@@ -161,6 +199,7 @@ public class AppDataService
 
     private record AppFlags(
         bool      StravaPromptShown,
+        bool      GoogleHealthPromptShown = false,
         int       PauseToleranceSeconds   = 120,
         DateTime? LastGhostedNagDate      = null,
         int       DailyDistanceMetersGoal = 0,    // 0 = no goal set
@@ -205,6 +244,14 @@ public class AppDataService
     {
         var f = LoadFlags();
         SaveFlags(f with { StravaPromptShown = true });
+    }
+
+    public bool HasShownGoogleHealthPrompt => LoadFlags().GoogleHealthPromptShown;
+
+    public void MarkGoogleHealthPromptShown()
+    {
+        var f = LoadFlags();
+        SaveFlags(f with { GoogleHealthPromptShown = true });
     }
 
     public int PauseToleranceSeconds

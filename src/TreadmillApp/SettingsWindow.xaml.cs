@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using TreadmillApp.Models;
 using TreadmillApp.Services;
 using TreadmillApp.Services.Strava;
+using TreadmillApp.Services.GoogleHealth;
 
 namespace TreadmillApp;
 
@@ -14,14 +15,16 @@ public partial class SettingsWindow : Window
     private readonly TreadmillBleManager             _ble;
     private readonly AppDataService                  _appData;
     private readonly StravaService                   _strava;
+    private readonly GoogleHealthService              _googleHealth;
     private readonly ObservableCollection<BleDevice> _devices = new();
     private          bool                            _loading;
 
-    public SettingsWindow(TreadmillBleManager ble, AppDataService appData, StravaService strava)
+    public SettingsWindow(TreadmillBleManager ble, AppDataService appData, StravaService strava, GoogleHealthService googleHealth)
     {
-        _ble     = ble;
-        _appData = appData;
-        _strava  = strava;
+        _ble          = ble;
+        _appData      = appData;
+        _strava       = strava;
+        _googleHealth = googleHealth;
 
         _loading = true;
         InitializeComponent();
@@ -32,6 +35,7 @@ public partial class SettingsWindow : Window
         UpdateLastDeviceLabel();
         UpdateButtonStates(_ble.State);
         LoadStravaState();
+        LoadGoogleHealthState();
         LoadWorkoutState();
         LoadGoalsState();
         LoadAppState();
@@ -162,6 +166,115 @@ public partial class SettingsWindow : Window
 
         _strava.SaveCredentials(new StravaCredentials(id, secret));
         UpdateStravaConnectionState();
+    }
+
+    // =========================================================================
+    // Google Health tab
+    // =========================================================================
+
+    private void LoadGoogleHealthState()
+    {
+        var creds = _googleHealth.GetCredentials();
+        if (creds != null)
+        {
+            GoogleHealthClientIdBox.Text         = creds.ClientId;
+            GoogleHealthClientSecretBox.Password = creds.ClientSecret;
+            ForgetGoogleHealthCredentialsButton.IsEnabled = true;
+        }
+
+        UpdateGoogleHealthConnectionState();
+    }
+
+    private void UpdateGoogleHealthConnectionState()
+    {
+        bool hasCreds  = _googleHealth.HasCredentials;
+        bool connected = _googleHealth.IsConnected;
+
+        ConnectGoogleHealthButton.IsEnabled    = hasCreds && !connected;
+        DisconnectGoogleHealthButton.IsEnabled = connected;
+        ForgetGoogleHealthCredentialsButton.IsEnabled = hasCreds;
+
+        if (connected)
+            GoogleHealthStatusText.Text = "Connected.";
+        else if (hasCreds)
+            GoogleHealthStatusText.Text = "Credentials saved. Click \"Connect to Google Health…\" to authorize.";
+        else
+            GoogleHealthStatusText.Text = "Not connected. Enter your OAuth client credentials above to begin.";
+    }
+
+    private void SaveGoogleHealthCredentials_Click(object sender, RoutedEventArgs e)
+    {
+        var id     = GoogleHealthClientIdBox.Text?.Trim()         ?? "";
+        var secret = GoogleHealthClientSecretBox.Password?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(secret))
+        {
+            System.Windows.MessageBox.Show(this,
+                "Both Client ID and Client Secret are required.",
+                "Google Health", System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Warning);
+            return;
+        }
+
+        _googleHealth.SaveCredentials(new GoogleHealthCredentials(id, secret));
+        UpdateGoogleHealthConnectionState();
+    }
+
+    private void ForgetGoogleHealthCredentials_Click(object sender, RoutedEventArgs e)
+    {
+        var ans = System.Windows.MessageBox.Show(this,
+            "Forget the saved Client ID, Client Secret, and any active OAuth tokens?",
+            "Forget Google Health Credentials",
+            System.Windows.MessageBoxButton.OKCancel,
+            System.Windows.MessageBoxImage.Question);
+        if (ans != System.Windows.MessageBoxResult.OK) return;
+
+        _googleHealth.ForgetCredentials();
+        GoogleHealthClientIdBox.Text         = "";
+        GoogleHealthClientSecretBox.Password = "";
+        UpdateGoogleHealthConnectionState();
+    }
+
+    private async void ConnectGoogleHealth_Click(object sender, RoutedEventArgs e)
+    {
+        ConnectGoogleHealthButton.IsEnabled = false;
+        GoogleHealthStatusText.Text = "Waiting for browser authorization…";
+        try
+        {
+            var ok = await _googleHealth.ConnectAsync();
+            if (ok)
+            {
+                var toast = new ToastWindow(
+                    "Google Health Connected",
+                    "Future walks will push automatically.",
+                    displayMs: 6000,
+                    style: ToastStyle.ThumbsUp);
+                toast.Show();
+            }
+            else
+            {
+                System.Windows.MessageBox.Show(this,
+                    "Authorization didn't complete. Check the log for details.",
+                    "Google Health", System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Warning);
+            }
+        }
+        finally
+        {
+            UpdateGoogleHealthConnectionState();
+        }
+    }
+
+    private void DisconnectGoogleHealth_Click(object sender, RoutedEventArgs e)
+    {
+        var ans = System.Windows.MessageBox.Show(this,
+            "Disconnect from Google Health? Your saved Client ID and Secret stay so you can reconnect without re-entering them.",
+            "Disconnect Google Health",
+            System.Windows.MessageBoxButton.OKCancel,
+            System.Windows.MessageBoxImage.Question);
+        if (ans != System.Windows.MessageBoxResult.OK) return;
+
+        _googleHealth.Disconnect();
+        UpdateGoogleHealthConnectionState();
     }
 
     private void ForgetCredentials_Click(object sender, RoutedEventArgs e)
